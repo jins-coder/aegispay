@@ -502,7 +502,7 @@ export default function OperationsConsoleApp() {
               </div>
 
               <div style={{ color: 'var(--text-secondary)', fontSize: '12px' }}>
-                Telemetry Syncs: <SignalValue value={opsTickSignal} />
+                Telemetry Syncs: <SignalValue signal={opsTickSignal} />
               </div>
             </div>
 

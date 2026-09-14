@@ -2,7 +2,8 @@ import React, { useSyncExternalStore } from 'react';
 import { Signal, Computed } from '../core/types';
 
 export interface SignalValueProps<T = any> {
-  signal: Signal<T> | Computed<T>;
+  signal?: Signal<T> | Computed<T>;
+  value?: Signal<T> | Computed<T>;
   render?: (val: T) => React.ReactNode;
   fallback?: React.ReactNode;
 }
@@ -14,15 +15,17 @@ export interface SignalValueProps<T = any> {
  * `{signal.value}` within JSX children. Subscribes fine-grained to the signal
  * without triggering re-renders in the parent component!
  */
-export function SignalValue<T = any>({ signal, render, fallback = null }: SignalValueProps<T>): React.ReactElement | null {
-  if (!signal || typeof signal.subscribe !== 'function') {
-    return <>{(signal as any)?.value ?? (signal as any) ?? fallback}</>;
+export function SignalValue<T = any>({ signal, value, render, fallback = null }: SignalValueProps<T>): React.ReactElement | null {
+  const targetSignal = signal || value;
+
+  if (!targetSignal || typeof targetSignal.subscribe !== 'function') {
+    return <>{(targetSignal as any)?.value ?? (targetSignal as any) ?? fallback}</>;
   }
 
   const val = useSyncExternalStore(
-    signal.subscribe,
-    signal.getSnapshot,
-    signal.getSnapshot
+    targetSignal.subscribe,
+    targetSignal.getSnapshot,
+    targetSignal.getSnapshot
   );
 
   if (render) {

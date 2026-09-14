@@ -721,7 +721,7 @@ export default function CustomerPortalApp() {
                 </div>
               </div>
               <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
-                Live Stream Ticks: <SignalValue value={liveTickSignal} />
+                Live Stream Ticks: <SignalValue signal={liveTickSignal} />
               </div>
             </div>
 
