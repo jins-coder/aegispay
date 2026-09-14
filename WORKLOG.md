@@ -14,6 +14,12 @@
 - Implemented `DepositPipeline`: state machine transitions, balanced credit journal posting, and outbox event emissions.
 - Verified 100-event replay idempotency, fake token rejection, and reverted transaction receipt handling (33 passing tests total).
 
+### Frontend Layer: uReact GUIs (Customer Portal & Operations Console)
+- Integrated `ureact` (React 19 + Vite) package (`packages/ureact`).
+- Built **Customer Portal** (`apps/customer-portal` on `http://localhost:4000`) with `createStore`, `useStore`, `Scoped`, `Show`, `For`, `SignalValue`, live SVG QR code generator, deposit simulation, and Funding-to-Trading internal transfer modal.
+- Built **Operations Console** (`apps/operations-console` on `http://localhost:4001`) with `createStore`, `useStore`, `Scoped`, `Show`, `For`, real-time network pause toggling (circuit breakers), cold vault balances, and live audit feeds.
+- Verified production builds (`vite build`) and live hot reloading for both frontend applications.
+
 ---
 
 ## Open Risks & Mitigations
