@@ -200,10 +200,13 @@ export default function CustomerPortalApp() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          fromAccountType: 'funding',
+          toAccountType: 'trading',
           fromAccount: 'funding',
           toAccount: 'trading',
           assetId: store.selectedAsset,
-          amountDecimal: store.transferAmount
+          amountDecimal: store.transferAmount,
+          idempotencyKey: `xfer_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
         })
       });
 

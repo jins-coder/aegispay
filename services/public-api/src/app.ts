@@ -185,7 +185,11 @@ export function createPublicApiServer(options?: {
       // 7. POST /v1/internal-transfers
       if (req.method === 'POST' && url.pathname === '/v1/internal-transfers') {
         const body = await readBody();
-        const { fromAccountType, toAccountType, assetId, amountDecimal, idempotencyKey } = body;
+        const fromAccountType = body.fromAccountType || body.fromAccount;
+        const toAccountType = body.toAccountType || body.toAccount;
+        const assetId = body.assetId;
+        const amountDecimal = body.amountDecimal;
+        const idempotencyKey = body.idempotencyKey;
 
         if (!fromAccountType || !toAccountType || !assetId || !amountDecimal) {
           return sendJson(400, { error: 'Missing required parameters' });
