@@ -16,15 +16,15 @@ console.log('• Operations Console:  http://localhost:4001  (uReact + React 19)
 console.log('=================================================================\n');
 
 const services = [
-  { name: 'Public API', cmd: 'node', args: ['services/public-api/dist/index.js'], env: { PORT: '3000' } },
-  { name: 'Admin API', cmd: 'node', args: ['services/admin-api/dist/index.js'], env: { ADMIN_PORT: '3001' } },
-  { name: 'Customer Portal (uReact)', cmd: 'npx', args: ['vite', '--config', 'apps/customer-portal/vite.config.ts', '--port', '4000', 'apps/customer-portal'], env: {} },
-  { name: 'Operations Console (uReact)', cmd: 'npx', args: ['vite', '--config', 'apps/operations-console/vite.config.ts', '--port', '4001', 'apps/operations-console'], env: {} }
+  { name: 'Public API', cmd: 'node', args: ['services/public-api/dist/index.js'], cwd: rootDir, env: { PORT: '3000' } },
+  { name: 'Admin API', cmd: 'node', args: ['services/admin-api/dist/index.js'], cwd: rootDir, env: { ADMIN_PORT: '3001' } },
+  { name: 'Customer Portal (uReact)', cmd: 'npx', args: ['vite', '--port', '4000', '--host'], cwd: path.resolve(rootDir, 'apps/customer-portal'), env: {} },
+  { name: 'Operations Console (uReact)', cmd: 'npx', args: ['vite', '--port', '4001', '--host'], cwd: path.resolve(rootDir, 'apps/operations-console'), env: {} }
 ];
 
 for (const s of services) {
   const child = spawn(s.cmd, s.args, {
-    cwd: rootDir,
+    cwd: s.cwd || rootDir,
     env: { ...process.env, ...s.env },
     stdio: 'inherit',
     shell: true
