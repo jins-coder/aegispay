@@ -1,5 +1,5 @@
 import { useSyncExternalStore, useRef, useCallback, useEffect, useMemo } from 'react';
-import { Listener, Store, Signal, Computed, Unsubscribe } from './types';
+import { Listener, Store, StoreBase, Signal, Computed, Unsubscribe } from './types';
 import { trackStoreAccess, notifyTrackedStores } from './view';
 import { bind } from './bind';
 
@@ -121,7 +121,7 @@ export function createStore<T extends object>(initialState: T): Store<T> {
     }
   }
 
-  const storeInstance: Store<T> = {
+  const storeInstance: StoreBase<T> = {
     get state() {
       return proxyState;
     },
@@ -190,7 +190,23 @@ export function createStore<T extends object>(initialState: T): Store<T> {
     }
   };
 
-  return storeInstance;
+  const unifiedStore = new Proxy(storeInstance, {
+    get(target, prop, receiver) {
+      if (prop in target) {
+        return Reflect.get(target, prop, receiver);
+      }
+      return (proxyState as any)[prop];
+    },
+    set(target, prop, value, receiver) {
+      if (prop in target) {
+        return Reflect.set(target, prop, value, receiver);
+      }
+      (proxyState as any)[prop] = value;
+      return true;
+    }
+  });
+
+  return unifiedStore as Store<T>;
 }
 
 /**

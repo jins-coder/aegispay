@@ -12,7 +12,7 @@ export type StoreBindingProxy<T> = {
   [K in keyof T]: AutoBinding;
 } & (<K extends keyof T>(prop: K) => AutoBinding);
 
-export interface Store<T extends object> {
+export interface StoreBase<T extends object> {
   state: T;
   subscribe: (listener: Listener) => Unsubscribe;
   getSnapshot: () => T;
@@ -30,6 +30,8 @@ export interface Store<T extends object> {
   /** Public direct path patch alias */
   $patch: (path: (string | number)[], valueOrMutator: any) => void;
 }
+
+export type Store<T extends object> = StoreBase<T> & T;
 
 export interface Signal<T> {
   value: T;

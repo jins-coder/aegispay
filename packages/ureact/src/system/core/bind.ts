@@ -1,5 +1,5 @@
 import { ChangeEvent } from 'react';
-import { Store, AutoBinding } from './types';
+import { Store, StoreBase, AutoBinding } from './types';
 
 export type { AutoBinding };
 
@@ -17,7 +17,7 @@ export type { AutoBinding };
  *   <input type="checkbox" {...bind(user, 'isSubscribed')} />
  */
 export function bind<T extends object, K extends keyof T>(
-  store: Store<T>,
+  store: StoreBase<T>,
   property: K
 ): AutoBinding {
   const currentVal = store.state[property];

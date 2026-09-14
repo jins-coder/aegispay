@@ -28,7 +28,28 @@ This document outlines the modifications made to the **uReact** library during t
     // ...
   }
   ```
-- **Benefit:** Full backward-compatibility with both `<SignalValue signal={...} />` and `<SignalValue value={...} />` without TypeScript compiler warnings.
+### B. Unified `Store<T>` Direct Member Access (`Store<T> = StoreBase<T> & T`)
+- **Location:** `packages/ureact/src/system/core/types.ts` & `packages/ureact/src/system/core/state.ts`
+- **Context:** When consuming a store outside React components (such as in background interval timers or direct module exports), developers expect `store.isAuthenticated` or `store.syncAdminData()` to be directly accessible without having to write `store.state.isAuthenticated` or suffering TypeScript errors.
+- **Change Applied:**
+  ```ts
+  export interface StoreBase<T extends object> {
+    state: T;
+    subscribe: (listener: Listener) => Unsubscribe;
+    getSnapshot: () => T;
+    reset: () => void;
+    replace: (newState: T) => void;
+    batch: (fn: () => void) => void;
+    $bind: StoreBindingProxy<T>;
+    $toggle: (property: keyof T) => void;
+    __patch: (path: (string | number)[], valueOrMutator: any) => void;
+    $patch: (path: (string | number)[], valueOrMutator: any) => void;
+  }
+
+  export type Store<T extends object> = StoreBase<T> & T;
+  ```
+  And inside `createStore`, returning a proxy that delegates unknown member lookups to `proxyState`.
+- **Benefit:** Seamless ergonomics allowing direct property access, method calls, and component hooks (`useStore(myStore)`) with 100% strict TypeScript type checking.
 
 ---
 

@@ -1,7 +1,7 @@
 import { createStore } from './state';
-import { Store, Listener, Unsubscribe, AutoBinding, StoreBindingProxy } from './types';
+import { Store, StoreBase, Listener, Unsubscribe, AutoBinding, StoreBindingProxy } from './types';
 
-export interface ListStore<T extends object> extends Store<T[]> {
+export interface ListStore<T extends object> extends StoreBase<T[]> {
   /** Add one or multiple items to the list. Automatically assigns an `id` if not present. */
   add: (item: T | T[] | any) => T;
   /** Remove item(s) by id or predicate */

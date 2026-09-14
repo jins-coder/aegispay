@@ -150,7 +150,7 @@ export function useWatchReactive<T>(
     const unwatch = watch(
       source,
       (newVal, oldVal, onCleanup) => {
-        cbRef.current(newVal, oldVal, onCleanup);
+        cbRef.current(newVal as T, oldVal as T | undefined, onCleanup);
       },
       options
     );
