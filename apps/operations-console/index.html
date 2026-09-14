@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AegisPay — Operations & Compliance Console</title>
+  <link rel="stylesheet" href="src/style.css">
+</head>
+<body>
+  <div class="layout">
+    <!-- Sidebar -->
+    <div class="sidebar">
+      <div class="logo">AEGISPAY OPS</div>
+      <div style="margin-bottom: 20px;">
+        <span class="badge-role">Role: Security & Audit</span>
+      </div>
+
+      <button class="nav-item active">Overview & Health</button>
+      <button class="nav-item">Treasury & Vaults</button>
+      <button class="nav-item">Network Pauses</button>
+      <button class="nav-item">Audit Logs</button>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content">
+      <h2 style="font-size: 20px; font-weight: 700; margin-bottom: 24px;">Platform Operations & Gateway Monitoring</h2>
+
+      <!-- Metrics Row -->
+      <div class="metrics-row">
+        <div class="metric-card">
+          <div class="metric-label">Solvency Status</div>
+          <div class="metric-val" id="val-solvency" style="color: var(--accent-emerald);">HEALTHY</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">24h Confirmed Volume</div>
+          <div class="metric-val tabular" id="val-volume">$4,850,200.00</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">Scanner Lag (TRON Nile)</div>
+          <div class="metric-val tabular" style="color: var(--accent-emerald);">0 blocks</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">Mainnet Status</div>
+          <div class="metric-val" style="color: var(--accent-amber); font-size: 16px;">GATED (TESTNET ONLY)</div>
+        </div>
+      </div>
+
+      <!-- Network Controls Panel -->
+      <div class="panel">
+        <div class="panel-header">Network Controls & Emergency Circuit Breakers</div>
+        <table>
+          <thead>
+            <tr>
+              <th>Network</th>
+              <th>Family</th>
+              <th>Chain ID</th>
+              <th>Status</th>
+              <th>Confirmation Depth</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody id="networks-table-body">
+            <tr><td colspan="6" style="text-align: center;">Loading network states...</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Treasury & Vault Reserves Panel -->
+      <div class="panel">
+        <div class="panel-header">On-Chain Custody & Treasury Exposure</div>
+        <table>
+          <thead>
+            <tr>
+              <th>Asset</th>
+              <th>Location</th>
+              <th>Controlled Vault Balance</th>
+              <th>Address</th>
+            </tr>
+          </thead>
+          <tbody id="treasury-table-body">
+            <tr>
+              <td>USDT (TRC-20)</td>
+              <td>TRON Cold Vault</td>
+              <td class="tabular" style="color: var(--accent-emerald);">500,000.000000</td>
+              <td class="tabular" style="font-size: 12px; color: var(--text-muted);">TAUN6FwrnwwmaEqYcckffC7wYmbaS6cBiX</td>
+            </tr>
+            <tr>
+              <td>USDC (ERC-20)</td>
+              <td>Ethereum Cold Vault</td>
+              <td class="tabular" style="color: var(--accent-emerald);">350,000.000000</td>
+              <td class="tabular" style="font-size: 12px; color: var(--text-muted);">0x3333333333333333333333333333333333333333</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Immutable Audit Log Panel -->
+      <div class="panel">
+        <div class="panel-header">Immutable Operations Audit Trail</div>
+        <table>
+          <thead>
+            <tr>
+              <th>Audit ID</th>
+              <th>Actor</th>
+              <th>Action</th>
+              <th>Resource</th>
+              <th>Timestamp</th>
+            </tr>
+          </thead>
+          <tbody id="audit-table-body">
+            <tr><td colspan="5" style="text-align: center; color: var(--text-muted);">No recent privileged actions</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const ADMIN_API = 'http://localhost:3001';
+
+    async function loadAdminData() {
+      try {
+        // 1. Overview
+        const ovRes = await fetch(`${ADMIN_API}/v1/admin/overview`);
+        const ov = await ovRes.json();
+        document.getElementById('val-solvency').innerText = ov.solvencyStatus;
+        document.getElementById('val-volume').innerText = `$${ov.totalDepositsVolumeUsd}`;
+
+        // 2. Networks
+        const netRes = await fetch(`${ADMIN_API}/v1/admin/networks`);
+        const networks = await netRes.json();
+        const netBody = document.getElementById('networks-table-body');
+        netBody.innerHTML = networks.map(n => `
+          <tr>
+            <td><strong>${n.name}</strong></td>
+            <td>${n.family.toUpperCase()}</td>
+            <td class="tabular">${n.chainId}</td>
+            <td>
+              <span style="color: ${n.isPaused ? 'var(--accent-red)' : 'var(--accent-emerald)'}; font-weight: 600;">
+                ${n.isPaused ? 'PAUSED' : 'ACTIVE'}
+              </span>
+            </td>
+            <td class="tabular">${n.confirmationDepth} blocks</td>
+            <td>
+              <button class="${n.isPaused ? 'btn-success' : 'btn-danger'}" onclick="toggleNetworkPause('${n.id}')">
+                ${n.isPaused ? 'Resume Traffic' : 'Emergency Pause'}
+              </button>
+            </td>
+          </tr>
+        `).join('');
+
+        // 3. Audit Log
+        const auditRes = await fetch(`${ADMIN_API}/v1/admin/audit-events`);
+        const audits = await auditRes.json();
+        const auditBody = document.getElementById('audit-table-body');
+        if (audits.length > 0) {
+          auditBody.innerHTML = audits.map(a => `
+            <tr>
+              <td class="tabular" style="font-size: 11px;">${a.id}</td>
+              <td>${a.actorId} (${a.actorRole})</td>
+              <td><strong>${a.action}</strong></td>
+              <td class="tabular">${a.resourceType}:${a.resourceId}</td>
+              <td class="tabular">${new Date(a.timestamp).toLocaleTimeString()}</td>
+            </tr>
+          `).join('');
+        }
+      } catch (err) {
+        console.error('Failed to load admin data:', err);
+      }
+    }
+
+    async function toggleNetworkPause(networkId) {
+      const reason = prompt('Enter mandatory reason for circuit breaker state change:', 'Routine maintenance check');
+      if (!reason) return;
+
+      const res = await fetch(`${ADMIN_API}/v1/admin/networks/${networkId}/pause`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reason })
+      });
+
+      if (res.ok) {
+        await loadAdminData();
+      }
+    }
+
+    loadAdminData();
+    setInterval(loadAdminData, 5000);
+  </script>
+</body>
+</html>

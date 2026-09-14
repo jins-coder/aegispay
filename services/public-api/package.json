@@ -1,0 +1,21 @@
+{
+  "name": "@aegispay/public-api",
+  "version": "0.1.0",
+  "private": true,
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "test": "node --test dist/__tests__/*.test.js",
+    "start": "node dist/index.js"
+  },
+  "dependencies": {
+    "@aegispay/chain-sdk": "workspace:*",
+    "@aegispay/core-ledger": "workspace:*",
+    "@aegispay/address-service": "workspace:*",
+    "@aegispay/api-client": "workspace:*"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.5"
+  }
+}
