@@ -18,11 +18,11 @@ use tower_http::cors::{Any, CorsLayer};
 use tracing::info;
 
 #[derive(RustEmbed)]
-#[folder = "../../apps/customer-portal/dist/"]
+#[folder = "../../dist_wasm/customer-portal/"]
 struct CustomerPortalAssets;
 
 #[derive(RustEmbed)]
-#[folder = "../../apps/operations-console/dist/"]
+#[folder = "../../dist_wasm/operations-console/"]
 struct OpsConsoleAssets;
 
 async fn static_portal_handler(uri: Uri) -> impl IntoResponse {

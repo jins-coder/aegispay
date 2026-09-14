@@ -3,6 +3,9 @@ resolver = "2"
 members = [
     "crates/aegispay-core",
     "crates/aegispay-server",
+    "crates/urust",
+    "crates/customer-portal-rs",
+    "crates/operations-console-rs",
 ]
 
 [profile.dev]
