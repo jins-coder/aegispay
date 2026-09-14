@@ -33,9 +33,9 @@
         <div class="card-subtext">Active Trading Engine Liability</div>
       </div>
       <div class="card">
-        <div class="card-title">Pending Inbound Deposits</div>
-        <div class="card-value tabular" id="val-pending-deposits" style="color: var(--accent-amber);">0.000000</div>
-        <div class="card-subtext">Awaiting Chain Finality</div>
+        <div class="card-title">Funding Balance (USDC)</div>
+        <div class="card-value tabular" id="val-funding-usdc" style="color: var(--accent-blue);">0.000000</div>
+        <div class="card-subtext">Ethereum Sepolia / ERC-20</div>
       </div>
     </div>
 
@@ -57,8 +57,8 @@
             <label>Select Asset</label>
             <select id="asset-select" onchange="onAssetNetworkChange()">
               <option value="usdt">USDT · Tether USD</option>
-              <option value="trx">TRX · TRON Native</option>
               <option value="usdc">USDC · USD Coin</option>
+              <option value="trx">TRX · TRON Native</option>
               <option value="eth">ETH · Ethereum Native</option>
             </select>
           </div>
@@ -73,18 +73,21 @@
           </div>
 
           <div class="warning-banner">
-            <strong>WRONG-NETWORK WARNING:</strong> Send only <span id="warning-asset-name">USDT</span> on the <span id="warning-net-name">TRON Nile</span> network. Sending through an unsupported route or token will trigger a manual review.
+            <strong>WRONG-NETWORK WARNING:</strong> Send only <span id="warning-asset-name">USDT</span> on the <span id="warning-net-name">TRON Nile</span> network. Sending through an unsupported route will trigger a manual review hold.
           </div>
 
-          <div class="address-box">
-            <label>Your Assigned Deposit Address</label>
-            <div class="address-display tabular" id="address-display">Loading address...</div>
-            <button class="btn btn-secondary" onclick="copyAddress()">Copy Address</button>
+          <div style="display: flex; gap: 20px; align-items: center; margin-bottom: 18px;">
+            <div id="qr-container"></div>
+            <div style="flex: 1;">
+              <label>Your Assigned Deposit Address</label>
+              <div class="address-display tabular" id="address-display" style="font-size: 13px; word-break: break-all;">Loading address...</div>
+              <button class="btn btn-secondary" onclick="copyAddress()">Copy Address</button>
+            </div>
           </div>
 
-          <div style="margin-top: 16px;">
-            <button class="btn" style="background: var(--accent-emerald);" onclick="simulateTestnetDeposit()">
-              ⚡ Simulate Testnet Deposit (10.000000)
+          <div style="display: flex; gap: 10px; margin-top: 16px;">
+            <button class="btn" style="background: var(--accent-emerald); flex: 1;" onclick="simulateTestnetDeposit()">
+              ⚡ Simulate Confirmed Deposit (10.000000)
             </button>
           </div>
         </div>
@@ -92,7 +95,7 @@
         <!-- Right: Status Timeline -->
         <div class="card">
           <h3 class="section-title">Deposit Finality Timeline</h3>
-          <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 12px;">
+          <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 16px;">
             Real-time multi-stage transaction verification state:
           </p>
 
@@ -181,19 +184,23 @@
     </div>
   </div>
 
-  <script>
+  <script type="module">
+    import { renderQRCodeSvg } from './src/qrcode.js';
+
     const API_BASE = 'http://localhost:3000';
     let currentAddress = '';
 
-    async function loadData() {
+    window.loadData = async function loadData() {
       try {
         // Load Balances
         const balRes = await fetch(`${API_BASE}/v1/balances`);
         const balances = await balRes.json();
         const usdt = balances.find(b => b.assetId === 'usdt') || { fundingDecimal: '0.000000', tradingDecimal: '0.000000' };
+        const usdc = balances.find(b => b.assetId === 'usdc') || { fundingDecimal: '0.000000' };
 
         document.getElementById('val-funding-usdt').innerText = usdt.fundingDecimal;
         document.getElementById('val-trading-usdt').innerText = usdt.tradingDecimal;
+        document.getElementById('val-funding-usdc').innerText = usdc.fundingDecimal;
         document.getElementById('modal-available-funding').value = `${usdt.fundingDecimal} USDT`;
 
         // Ensure Address
@@ -206,6 +213,7 @@
         const addrJson = await addrRes.json();
         currentAddress = addrJson.address;
         document.getElementById('address-display').innerText = currentAddress;
+        document.getElementById('qr-container').innerHTML = renderQRCodeSvg(currentAddress, 140);
 
         // Load Tx History
         const txRes = await fetch(`${API_BASE}/v1/transactions`);
@@ -225,39 +233,39 @@
       } catch (err) {
         console.error('Failed to load data:', err);
       }
-    }
+    };
 
-    function switchTab(tab) {
+    window.switchTab = function switchTab(tab) {
       document.querySelectorAll('.tab-content').forEach(el => el.style.display = 'none');
       document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
 
       const target = document.getElementById(`tab-${tab}`);
       if (target) target.style.display = 'block';
       event.target.classList.add('active');
-    }
+    };
 
-    function openTransferModal() {
+    window.openTransferModal = function openTransferModal() {
       document.getElementById('transfer-modal').style.display = 'flex';
-    }
+    };
 
-    function closeTransferModal() {
+    window.closeTransferModal = function closeTransferModal() {
       document.getElementById('transfer-modal').style.display = 'none';
-    }
+    };
 
-    async function onAssetNetworkChange() {
+    window.onAssetNetworkChange = async function onAssetNetworkChange() {
       const asset = document.getElementById('asset-select').value.toUpperCase();
       const net = document.getElementById('network-select').value;
       document.getElementById('warning-asset-name').innerText = asset;
       document.getElementById('warning-net-name').innerText = net;
-      await loadData();
-    }
+      await window.loadData();
+    };
 
-    function copyAddress() {
+    window.copyAddress = function copyAddress() {
       navigator.clipboard.writeText(currentAddress);
       alert(`Address copied: ${currentAddress}`);
-    }
+    };
 
-    async function simulateTestnetDeposit() {
+    window.simulateTestnetDeposit = async function simulateTestnetDeposit() {
       const net = document.getElementById('network-select').value;
       const asset = document.getElementById('asset-select').value;
 
@@ -273,11 +281,11 @@
         document.getElementById('step-2').classList.add('completed');
         document.getElementById('step-3').classList.add('completed');
         document.getElementById('step-4').classList.add('completed');
-        await loadData();
+        await window.loadData();
       }
-    }
+    };
 
-    async function submitInternalTransfer() {
+    window.submitInternalTransfer = async function submitInternalTransfer() {
       const amount = document.getElementById('transfer-amount-input').value || '10.000000';
       const res = await fetch(`${API_BASE}/v1/internal-transfers`, {
         method: 'POST',
@@ -292,16 +300,16 @@
       });
 
       if (res.ok) {
-        closeTransferModal();
-        await loadData();
+        window.closeTransferModal();
+        await window.loadData();
       } else {
         const err = await res.json();
         alert(`Transfer Error: ${err.error}`);
       }
-    }
+    };
 
-    loadData();
-    setInterval(loadData, 5000);
+    window.loadData();
+    setInterval(window.loadData, 5000);
   </script>
 </body>
 </html>
