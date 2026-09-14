@@ -1,0 +1,87 @@
+{
+  "name": "vscode-ureact",
+  "displayName": "uReact - Developer Suite & Autocomplete",
+  "description": "Rich IntelliSense, autocomplete snippets, reactive state scaffolding, hover docs, and UX tools for uReact.",
+  "version": "2.3.0",
+  "publisher": "ureact",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ureact/ureact"
+  },
+  "engines": {
+    "vscode": "^1.80.0"
+  },
+  "categories": [
+    "Programming Languages",
+    "Snippets",
+    "Other"
+  ],
+  "keywords": [
+    "react",
+    "ureact",
+    "signals",
+    "state-management",
+    "reactive",
+    "forms",
+    "autocomplete",
+    "snippets"
+  ],
+  "activationEvents": [
+    "onLanguage:javascript",
+    "onLanguage:javascriptreact",
+    "onLanguage:typescript",
+    "onLanguage:typescriptreact"
+  ],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "snippets": [
+      {
+        "language": "javascript",
+        "path": "./snippets/ureact.json"
+      },
+      {
+        "language": "javascriptreact",
+        "path": "./snippets/ureact.json"
+      },
+      {
+        "language": "typescript",
+        "path": "./snippets/ureact.json"
+      },
+      {
+        "language": "typescriptreact",
+        "path": "./snippets/ureact.json"
+      }
+    ],
+    "commands": [
+      {
+        "command": "ureact.openDocs",
+        "title": "uReact: Open Interactive Documentation Portal"
+      },
+      {
+        "command": "ureact.insertStoreTemplate",
+        "title": "uReact: Insert Reactive Store Template"
+      },
+      {
+        "command": "ureact.insertFormTemplate",
+        "title": "uReact: Insert Form Validation Store Template"
+      },
+      {
+        "command": "ureact.insertScopedTemplate",
+        "title": "uReact: Insert <Scoped> Component Template"
+      },
+      {
+        "command": "ureact.insertDevTools",
+        "title": "uReact: Mount <DevTools /> HUD"
+      }
+    ]
+  },
+  "scripts": {
+    "build": "tsc -p ./tsconfig.json",
+    "package": "npx @vscode/vsce package --allow-missing-repository"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.80.0",
+    "@vscode/vsce": "^3.9.2"
+  }
+}

@@ -1,0 +1,55 @@
+{
+  "name": "ureact",
+  "version": "2.3.0",
+  "description": "A developer-first reactive framework built on top of React to eliminate hook boilerplate and simplify state, forms, and async flows.",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "dev": "vite",
+    "build:lib": "vite build --config vite.config.lib.ts && tsc -p tsconfig.lib.json",
+    "build:demo": "vite build",
+    "build:ext": "tsc -p vscode-extension/tsconfig.json",
+    "build": "npm run build:lib && npm run build:demo && npm run build:ext",
+    "preview": "vite preview"
+  },
+  "keywords": [
+    "react",
+    "framework",
+    "reactivity",
+    "state-management",
+    "dx",
+    "hooks",
+    "forms",
+    "signals"
+  ],
+  "author": "uReact Team",
+  "license": "MIT",
+  "dependencies": {
+    "clsx": "^2.1.1",
+    "lucide-react": "^1.16.0",
+    "prism-react-renderer": "^2.4.1",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.5.4",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "@vitejs/plugin-react": "^4.3.1",
+    "typescript": "^5.5.4",
+    "vite": "^5.4.2"
+  }
+}
