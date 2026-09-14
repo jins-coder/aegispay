@@ -12,7 +12,7 @@ import {
 
 const ADMIN_API = 'http://localhost:3001';
 
-// Reactive uReact Store for Operations Console
+// Reactive uReact Store for Operations Console (Pure Light Theme)
 export const opsStore = createStore({
   // Admin Auth
   isAuthenticated: false,
@@ -20,9 +20,6 @@ export const opsStore = createStore({
   adminName: '',
   adminRole: 'SECURITY_OFFICER',
   isAuthenticating: false,
-
-  // Theme
-  theme: 'light' as 'light' | 'dark',
 
   // Operations Data
   solvencyStatus: 'HEALTHY',
@@ -34,9 +31,6 @@ export const opsStore = createStore({
   activeTab: 'overview' as 'overview' | 'networks' | 'treasury' | 'audit',
   toastMsg: '',
 
-  toggleTheme() {
-    this.theme = this.theme === 'light' ? 'dark' : 'light';
-  },
   login(email: string, name: string, role: string) {
     this.isAuthenticated = true;
     this.adminEmail = email;
@@ -170,40 +164,21 @@ export default function OperationsConsoleApp() {
     }
   };
 
-  const isLight = store.theme === 'light';
-
   return (
     <Scoped css={`
-      :root {
-        --bg-page: ${isLight ? '#f8fafc' : '#090d16'};
-        --bg-card: ${isLight ? '#ffffff' : '#0f172a'};
-        --bg-sidebar: ${isLight ? '#ffffff' : '#0a0f1d'};
-        --bg-card-subtle: ${isLight ? '#f1f5f9' : '#1e293b'};
-        --border-color: ${isLight ? '#e2e8f0' : '#1e293b'};
-        --text-primary: ${isLight ? '#0f172a' : '#f8fafc'};
-        --text-secondary: ${isLight ? '#64748b' : '#94a3b8'};
-        --text-muted: ${isLight ? '#94a3b8' : '#64748b'};
-        --brand-primary: #0284c7;
-        --brand-accent: #10b981;
-        --shadow-sm: ${isLight ? '0 1px 3px rgba(0,0,0,0.06)' : '0 1px 3px rgba(0,0,0,0.3)'};
-        --shadow-md: ${isLight ? '0 4px 12px rgba(0,0,0,0.05)' : '0 4px 16px rgba(0,0,0,0.4)'};
-        --shadow-lg: ${isLight ? '0 10px 25px rgba(0,0,0,0.08)' : '0 10px 30px rgba(0,0,0,0.6)'};
-      }
-
       .ops-layout {
         display: flex;
         min-height: 100vh;
-        background-color: var(--bg-page);
-        color: var(--text-primary);
+        background-color: #f8fafc;
+        color: #0f172a;
         font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Inter, sans-serif;
-        transition: background-color 0.25s ease;
       }
 
       /* Sidebar */
       .sidebar {
         width: 260px;
-        background: var(--bg-sidebar);
-        border-right: 1px solid var(--border-color);
+        background: #ffffff;
+        border-right: 1px solid #e2e8f0;
         padding: 24px 16px;
         display: flex;
         flex-direction: column;
@@ -212,7 +187,7 @@ export default function OperationsConsoleApp() {
         font-size: 16px;
         font-weight: 800;
         letter-spacing: 0.05em;
-        color: var(--brand-primary);
+        color: #0284c7;
         margin-bottom: 6px;
         display: flex;
         align-items: center;
@@ -220,9 +195,9 @@ export default function OperationsConsoleApp() {
       }
       .role-tag {
         display: inline-block;
-        background: ${isLight ? 'rgba(2, 132, 199, 0.1)' : 'rgba(56, 189, 248, 0.15)'};
-        color: var(--brand-primary);
-        border: 1px solid var(--brand-primary);
+        background: #e0f2fe;
+        color: #0284c7;
+        border: 1px solid #bae6fd;
         font-size: 11px;
         font-weight: 700;
         padding: 2px 6px;
@@ -236,7 +211,7 @@ export default function OperationsConsoleApp() {
         padding: 10px 14px;
         margin-bottom: 6px;
         border-radius: 8px;
-        color: var(--text-secondary);
+        color: #64748b;
         background: transparent;
         border: none;
         font-size: 13px;
@@ -245,8 +220,8 @@ export default function OperationsConsoleApp() {
         transition: all 0.2s;
       }
       .nav-btn.active, .nav-btn:hover {
-        background: var(--bg-card-subtle);
-        color: var(--text-primary);
+        background: #f1f5f9;
+        color: #0f172a;
       }
 
       /* Main */
@@ -270,39 +245,40 @@ export default function OperationsConsoleApp() {
         margin-bottom: 32px;
       }
       .metric-card {
-        background: var(--bg-card);
-        border: 1px solid var(--border-color);
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
         border-radius: 12px;
         padding: 20px;
-        box-shadow: var(--shadow-sm);
+        box-shadow: 0 1px 3px rgba(0,0,0,0.04);
       }
       .metric-lbl {
         font-size: 11px;
         font-weight: 700;
         text-transform: uppercase;
-        color: var(--text-secondary);
+        color: #64748b;
         margin-bottom: 8px;
       }
       .metric-val {
         font-size: 24px;
         font-weight: 800;
         font-family: ui-monospace, SFMono-Regular, monospace;
+        color: #0f172a;
       }
 
       /* Panels */
       .panel {
-        background: var(--bg-card);
-        border: 1px solid var(--border-color);
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
         border-radius: 12px;
         padding: 24px;
         margin-bottom: 28px;
-        box-shadow: var(--shadow-sm);
+        box-shadow: 0 1px 3px rgba(0,0,0,0.04);
       }
       .panel-header {
         font-size: 16px;
         font-weight: 800;
         margin-bottom: 18px;
-        color: var(--text-primary);
+        color: #0f172a;
       }
       
       table {
@@ -313,22 +289,22 @@ export default function OperationsConsoleApp() {
         text-align: left;
         font-size: 11px;
         font-weight: 700;
-        color: var(--text-secondary);
+        color: #64748b;
         text-transform: uppercase;
         padding: 12px 10px;
-        border-bottom: 1px solid var(--border-color);
+        border-bottom: 1px solid #e2e8f0;
       }
       td {
         padding: 14px 10px;
         font-size: 13px;
-        border-bottom: 1px solid var(--border-color);
-        color: var(--text-primary);
+        border-bottom: 1px solid #e2e8f0;
+        color: #0f172a;
       }
 
       .btn-danger {
-        background: rgba(239, 68, 68, 0.1);
-        color: #ef4444;
-        border: 1px solid rgba(239, 68, 68, 0.3);
+        background: #fee2e2;
+        color: #b91c1c;
+        border: 1px solid #fca5a5;
         padding: 6px 14px;
         border-radius: 6px;
         font-size: 12px;
@@ -339,9 +315,9 @@ export default function OperationsConsoleApp() {
       .btn-danger:hover { background: #ef4444; color: #ffffff; }
 
       .btn-success {
-        background: rgba(16, 185, 129, 0.1);
-        color: #10b981;
-        border: 1px solid rgba(16, 185, 129, 0.3);
+        background: #dcfce7;
+        color: #166534;
+        border: 1px solid #86efac;
         padding: 6px 14px;
         border-radius: 6px;
         font-size: 12px;
@@ -360,13 +336,13 @@ export default function OperationsConsoleApp() {
         padding: 40px;
       }
       .admin-login-card {
-        background: var(--bg-card);
-        border: 1px solid var(--border-color);
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
         border-radius: 16px;
         padding: 40px;
         width: 100%;
         max-width: 440px;
-        box-shadow: var(--shadow-lg);
+        box-shadow: 0 10px 25px rgba(0,0,0,0.05);
       }
     `}>
       <div className="ops-layout">
@@ -375,23 +351,23 @@ export default function OperationsConsoleApp() {
           <div className="login-container">
             <div className="admin-login-card">
               <div style={{ textAlign: 'center', marginBottom: '28px' }}>
-                <div style={{ fontSize: '20px', fontWeight: 800, color: 'var(--brand-primary)', marginBottom: '6px' }}>
+                <div style={{ fontSize: '20px', fontWeight: 800, color: '#0284c7', marginBottom: '6px' }}>
                   🛡️ AEGISPAY SECURITY CONSOLE
                 </div>
-                <div style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
+                <div style={{ fontSize: '13px', color: '#64748b' }}>
                   Privileged Admin & Treasury Access
                 </div>
               </div>
 
               <form onSubmit={handleAdminLoginSubmit}>
                 <div style={{ marginBottom: '16px' }}>
-                  <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, marginBottom: '6px' }}>Admin ID</label>
+                  <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, marginBottom: '6px', color: '#0f172a' }}>Admin ID</label>
                   <input
                     type="email"
                     style={{
                       width: '100%', padding: '10px 14px', borderRadius: '8px',
-                      border: '1px solid var(--border-color)', background: 'var(--bg-card)',
-                      color: 'var(--text-primary)', boxSizing: 'border-box'
+                      border: '1px solid #cbd5e1', background: '#ffffff',
+                      color: '#0f172a', boxSizing: 'border-box'
                     }}
                     value={adminInputEmail}
                     onChange={(e) => setAdminInputEmail(e.target.value)}
@@ -400,13 +376,13 @@ export default function OperationsConsoleApp() {
                 </div>
 
                 <div style={{ marginBottom: '24px' }}>
-                  <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, marginBottom: '6px' }}>Security Secret</label>
+                  <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, marginBottom: '6px', color: '#0f172a' }}>Security Secret</label>
                   <input
                     type="password"
                     style={{
                       width: '100%', padding: '10px 14px', borderRadius: '8px',
-                      border: '1px solid var(--border-color)', background: 'var(--bg-card)',
-                      color: 'var(--text-primary)', boxSizing: 'border-box'
+                      border: '1px solid #cbd5e1', background: '#ffffff',
+                      color: '#0f172a', boxSizing: 'border-box'
                     }}
                     value={adminInputPass}
                     onChange={(e) => setAdminInputPass(e.target.value)}
@@ -417,7 +393,7 @@ export default function OperationsConsoleApp() {
                 <button
                   type="submit"
                   style={{
-                    width: '100%', padding: '12px', background: 'var(--brand-primary)',
+                    width: '100%', padding: '12px', background: '#0284c7',
                     color: '#ffffff', border: 'none', borderRadius: '8px',
                     fontWeight: 700, cursor: 'pointer'
                   }}
@@ -462,25 +438,13 @@ export default function OperationsConsoleApp() {
               📜 Immutable Audit Trail
             </button>
 
-            <div style={{ marginTop: 'auto', paddingTop: '20px', borderTop: '1px solid var(--border-color)' }}>
-              <button
-                onClick={() => store.toggleTheme()}
-                style={{
-                  width: '100%', padding: '8px 12px', borderRadius: '6px',
-                  background: 'var(--bg-card-subtle)', border: '1px solid var(--border-color)',
-                  color: 'var(--text-primary)', cursor: 'pointer', marginBottom: '8px',
-                  fontSize: '12px', fontWeight: 600
-                }}
-              >
-                {isLight ? '🌙 Dark Mode' : '☀️ Light Mode'}
-              </button>
-
+            <div style={{ marginTop: 'auto', paddingTop: '20px', borderTop: '1px solid #e2e8f0' }}>
               <button
                 onClick={() => store.logout()}
                 style={{
                   width: '100%', padding: '8px 12px', borderRadius: '6px',
-                  background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.3)',
-                  color: '#ef4444', cursor: 'pointer',
+                  background: '#fee2e2', border: '1px solid #fca5a5',
+                  color: '#b91c1c', cursor: 'pointer',
                   fontSize: '12px', fontWeight: 600
                 }}
               >
@@ -493,15 +457,15 @@ export default function OperationsConsoleApp() {
           <main className="main-content">
             <div className="topbar">
               <div>
-                <h1 style={{ fontSize: '22px', fontWeight: 800, margin: '0 0 4px 0' }}>
+                <h1 style={{ fontSize: '22px', fontWeight: 800, margin: '0 0 4px 0', color: '#0f172a' }}>
                   Gateway Operations & Compliance Console
                 </h1>
-                <div style={{ color: 'var(--text-secondary)', fontSize: '13px' }}>
+                <div style={{ color: '#64748b', fontSize: '13px' }}>
                   Logged in as <strong>{store.adminEmail}</strong> (Active Session)
                 </div>
               </div>
 
-              <div style={{ color: 'var(--text-secondary)', fontSize: '12px' }}>
+              <div style={{ color: '#64748b', fontSize: '12px' }}>
                 Telemetry Syncs: <SignalValue signal={opsTickSignal} />
               </div>
             </div>
@@ -588,7 +552,7 @@ export default function OperationsConsoleApp() {
                           <td><strong>{v.asset}</strong></td>
                           <td>{v.location}</td>
                           <td style={{ color: '#10b981', fontWeight: 700 }}>{v.balanceDecimal}</td>
-                          <td style={{ color: 'var(--text-secondary)', fontFamily: 'monospace', fontSize: '12px' }}>{v.address}</td>
+                          <td style={{ color: '#64748b', fontFamily: 'monospace', fontSize: '12px' }}>{v.address}</td>
                         </tr>
                       )}
                     </For>
@@ -612,14 +576,14 @@ export default function OperationsConsoleApp() {
                     </tr>
                   </thead>
                   <tbody>
-                    <For each={store.auditLogs} fallback={<tr><td colSpan={5} style={{ textAlign: 'center', color: 'var(--text-muted)' }}>No recent privileged actions</td></tr>}>
+                    <For each={store.auditLogs} fallback={<tr><td colSpan={5} style={{ textAlign: 'center', color: '#94a3b8' }}>No recent privileged actions</td></tr>}>
                       {(a: any) => (
                         <tr key={a.id}>
                           <td style={{ fontSize: '11px', fontFamily: 'monospace' }}>{a.id}</td>
                           <td>{a.actorId} ({a.actorRole})</td>
                           <td><strong>{a.action}</strong></td>
                           <td>{a.resourceType}:{a.resourceId}</td>
-                          <td style={{ color: 'var(--text-secondary)', fontSize: '12px' }}>{new Date(a.timestamp).toLocaleTimeString()}</td>
+                          <td style={{ color: '#64748b', fontSize: '12px' }}>{new Date(a.timestamp).toLocaleTimeString()}</td>
                         </tr>
                       )}
                     </For>

@@ -13,7 +13,7 @@ import { renderQRCodeSvg } from './qrcode';
 
 const API_BASE = 'http://localhost:3000';
 
-// 1. Reactive uReact Store for AegisPay Customer Portal
+// 1. Reactive uReact Store for AegisPay Customer Portal (Clean Light Theme)
 export const portalStore = createStore({
   // Auth state
   isAuthenticated: false,
@@ -23,9 +23,6 @@ export const portalStore = createStore({
   apiKey: '',
   authError: '',
   isAuthenticating: false,
-
-  // UI Theme: default 'light'
-  theme: 'light' as 'light' | 'dark',
 
   // Deposit & Balances
   selectedAsset: 'usdt',
@@ -42,9 +39,6 @@ export const portalStore = createStore({
   copyToast: '',
 
   // Methods
-  toggleTheme() {
-    this.theme = this.theme === 'light' ? 'dark' : 'light';
-  },
   login(email: string, name: string, apiKey: string) {
     this.isAuthenticated = true;
     this.userEmail = email;
@@ -226,53 +220,33 @@ export default function CustomerPortalApp() {
     }
   };
 
-  const isLight = store.theme === 'light';
-
   return (
     <Scoped css={`
-      :root {
-        --bg-page: ${isLight ? '#f8fafc' : '#0a0f1d'};
-        --bg-card: ${isLight ? '#ffffff' : '#111827'};
-        --bg-card-subtle: ${isLight ? '#f1f5f9' : '#1e293b'};
-        --border-color: ${isLight ? '#e2e8f0' : '#2d3748'};
-        --border-focus: ${isLight ? '#4f46e5' : '#6366f1'};
-        --text-primary: ${isLight ? '#0f172a' : '#f8fafc'};
-        --text-secondary: ${isLight ? '#64748b' : '#94a3b8'};
-        --text-muted: ${isLight ? '#94a3b8' : '#64748b'};
-        --brand-primary: #4f46e5;
-        --brand-accent: #10b981;
-        --brand-warn: #f59e0b;
-        --shadow-sm: ${isLight ? '0 1px 3px rgba(0,0,0,0.06)' : '0 1px 3px rgba(0,0,0,0.3)'};
-        --shadow-md: ${isLight ? '0 4px 12px rgba(0,0,0,0.05)' : '0 4px 16px rgba(0,0,0,0.4)'};
-        --shadow-lg: ${isLight ? '0 10px 25px rgba(0,0,0,0.08)' : '0 10px 30px rgba(0,0,0,0.6)'};
-      }
-
       .app-container {
         min-height: 100vh;
-        background-color: var(--bg-page);
-        color: var(--text-primary);
+        background-color: #f8fafc;
+        color: #0f172a;
         font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Inter, Helvetica, Arial, sans-serif;
         display: flex;
         flex-direction: column;
-        transition: background-color 0.25s ease, color 0.25s ease;
       }
 
       /* Navbar */
       .navbar {
-        background-color: var(--bg-card);
-        border-bottom: 1px solid var(--border-color);
+        background-color: #ffffff;
+        border-bottom: 1px solid #e2e8f0;
         padding: 14px 28px;
         display: flex;
         align-items: center;
         justify-content: space-between;
-        box-shadow: var(--shadow-sm);
+        box-shadow: 0 1px 3px rgba(0,0,0,0.04);
       }
       .nav-left { display: flex; align-items: center; gap: 14px; }
       .brand-title {
         font-size: 18px;
         font-weight: 800;
         letter-spacing: -0.02em;
-        color: var(--brand-primary);
+        color: #4f46e5;
         display: flex;
         align-items: center;
         gap: 8px;
@@ -289,26 +263,10 @@ export default function CustomerPortalApp() {
         text-transform: uppercase;
       }
       .nav-right { display: flex; align-items: center; gap: 14px; }
-      
-      .btn-theme {
-        background: var(--bg-card-subtle);
-        color: var(--text-primary);
-        border: 1px solid var(--border-color);
-        padding: 6px 12px;
-        border-radius: 8px;
-        font-size: 13px;
-        font-weight: 600;
-        cursor: pointer;
-        display: flex;
-        align-items: center;
-        gap: 6px;
-        transition: all 0.2s;
-      }
-      .btn-theme:hover { border-color: var(--border-focus); }
 
       .user-pill {
-        background: var(--bg-card-subtle);
-        border: 1px solid var(--border-color);
+        background: #f1f5f9;
+        border: 1px solid #e2e8f0;
         border-radius: 8px;
         padding: 6px 12px;
         display: flex;
@@ -320,7 +278,7 @@ export default function CustomerPortalApp() {
         width: 24px;
         height: 24px;
         border-radius: 50%;
-        background: var(--brand-primary);
+        background: #4f46e5;
         color: #ffffff;
         display: flex;
         align-items: center;
@@ -329,10 +287,10 @@ export default function CustomerPortalApp() {
         font-size: 11px;
       }
       .btn-logout {
-        background: rgba(239, 68, 68, 0.1);
-        color: #ef4444;
-        border: 1px solid rgba(239, 68, 68, 0.3);
-        padding: 6px 12px;
+        background: #fee2e2;
+        color: #b91c1c;
+        border: 1px solid #fca5a5;
+        padding: 6px 14px;
         border-radius: 8px;
         font-size: 13px;
         font-weight: 600;
@@ -353,36 +311,36 @@ export default function CustomerPortalApp() {
         padding: 40px 20px;
       }
       .login-card {
-        background: var(--bg-card);
-        border: 1px solid var(--border-color);
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
         border-radius: 16px;
         padding: 40px;
         width: 100%;
         max-width: 440px;
-        box-shadow: var(--shadow-lg);
+        box-shadow: 0 10px 25px rgba(0,0,0,0.05);
       }
       .login-header { text-align: center; margin-bottom: 28px; }
-      .login-header h1 { font-size: 24px; font-weight: 800; margin: 0 0 8px 0; color: var(--text-primary); }
-      .login-header p { font-size: 14px; color: var(--text-secondary); margin: 0; }
+      .login-header h1 { font-size: 24px; font-weight: 800; margin: 0 0 8px 0; color: #0f172a; }
+      .login-header p { font-size: 14px; color: #64748b; margin: 0; }
       
       .form-group { margin-bottom: 20px; }
-      .form-label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 6px; color: var(--text-primary); }
+      .form-label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 6px; color: #0f172a; }
       .form-input {
         width: 100%;
         padding: 10px 14px;
-        border: 1px solid var(--border-color);
+        border: 1px solid #cbd5e1;
         border-radius: 8px;
-        background: var(--bg-card);
-        color: var(--text-primary);
+        background: #ffffff;
+        color: #0f172a;
         font-size: 14px;
         outline: none;
         box-sizing: border-box;
       }
-      .form-input:focus { border-color: var(--brand-primary); }
+      .form-input:focus { border-color: #4f46e5; }
       
       .btn-primary {
         width: 100%;
-        background: var(--brand-primary);
+        background: #4f46e5;
         color: #ffffff;
         border: none;
         padding: 12px;
@@ -397,10 +355,10 @@ export default function CustomerPortalApp() {
       .demo-autofill {
         margin-top: 16px;
         padding: 12px;
-        background: var(--bg-card-subtle);
+        background: #f1f5f9;
         border-radius: 8px;
         font-size: 12px;
-        color: var(--text-secondary);
+        color: #475569;
         display: flex;
         justify-content: space-between;
         align-items: center;
@@ -424,20 +382,20 @@ export default function CustomerPortalApp() {
         margin-bottom: 28px;
       }
       .card {
-        background: var(--bg-card);
-        border: 1px solid var(--border-color);
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
         border-radius: 12px;
         padding: 24px;
-        box-shadow: var(--shadow-sm);
+        box-shadow: 0 1px 3px rgba(0,0,0,0.04);
         transition: transform 0.2s ease, box-shadow 0.2s ease;
       }
-      .card:hover { box-shadow: var(--shadow-md); }
+      .card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.06); }
       .card-title {
         font-size: 12px;
         font-weight: 700;
         text-transform: uppercase;
         letter-spacing: 0.05em;
-        color: var(--text-secondary);
+        color: #64748b;
         margin-bottom: 8px;
         display: flex;
         justify-content: space-between;
@@ -446,17 +404,17 @@ export default function CustomerPortalApp() {
       .card-amount {
         font-size: 28px;
         font-weight: 800;
-        color: var(--text-primary);
+        color: #0f172a;
         letter-spacing: -0.02em;
         font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
       }
       .card-subtext {
         font-size: 12px;
-        color: var(--text-muted);
+        color: #94a3b8;
         margin-top: 6px;
       }
       .btn-action-sm {
-        background: var(--brand-primary);
+        background: #4f46e5;
         color: #ffffff;
         border: none;
         padding: 6px 14px;
@@ -485,23 +443,23 @@ export default function CustomerPortalApp() {
       }
       .net-chip {
         padding: 12px;
-        border: 1px solid var(--border-color);
+        border: 1px solid #e2e8f0;
         border-radius: 8px;
-        background: var(--bg-card-subtle);
+        background: #f8fafc;
         cursor: pointer;
         text-align: left;
         transition: all 0.2s;
       }
       .net-chip.active {
-        border-color: var(--brand-primary);
-        background: ${isLight ? 'rgba(79, 70, 229, 0.06)' : 'rgba(99, 102, 241, 0.15)'};
+        border-color: #4f46e5;
+        background: #eef2ff;
       }
-      .net-chip-title { font-size: 13px; font-weight: 700; color: var(--text-primary); }
-      .net-chip-desc { font-size: 11px; color: var(--text-secondary); margin-top: 2px; }
+      .net-chip-title { font-size: 13px; font-weight: 700; color: #0f172a; }
+      .net-chip-desc { font-size: 11px; color: #64748b; margin-top: 2px; }
 
       .addr-field {
-        background: var(--bg-card-subtle);
-        border: 1px solid var(--border-color);
+        background: #f1f5f9;
+        border: 1px solid #e2e8f0;
         border-radius: 8px;
         padding: 12px;
         display: flex;
@@ -511,10 +469,10 @@ export default function CustomerPortalApp() {
         word-break: break-all;
         font-family: monospace;
         font-size: 13px;
-        color: var(--text-primary);
+        color: #0f172a;
       }
       .btn-copy {
-        background: var(--brand-primary);
+        background: #4f46e5;
         color: #ffffff;
         border: none;
         padding: 6px 12px;
@@ -532,15 +490,15 @@ export default function CustomerPortalApp() {
         align-items: center;
         justify-content: center;
         padding: 20px;
-        background: var(--bg-card-subtle);
+        background: #f8fafc;
         border-radius: 12px;
-        border: 1px solid var(--border-color);
+        border: 1px solid #e2e8f0;
       }
 
       /* Simulator Card */
       .sim-card {
-        background: ${isLight ? '#f0fdf4' : 'rgba(16, 185, 129, 0.08)'};
-        border: 1px solid ${isLight ? '#bbf7d0' : 'rgba(16, 185, 129, 0.3)'};
+        background: #f0fdf4;
+        border: 1px solid #bbf7d0;
         border-radius: 12px;
         padding: 20px;
         margin-top: 20px;
@@ -570,15 +528,15 @@ export default function CustomerPortalApp() {
         font-size: 11px;
         font-weight: 700;
         text-transform: uppercase;
-        color: var(--text-secondary);
+        color: #64748b;
         padding: 10px 12px;
-        border-bottom: 1px solid var(--border-color);
+        border-bottom: 1px solid #e2e8f0;
       }
       .tx-table td {
         padding: 14px 12px;
         font-size: 13px;
-        border-bottom: 1px solid var(--border-color);
-        color: var(--text-primary);
+        border-bottom: 1px solid #e2e8f0;
+        color: #0f172a;
       }
       .status-pill {
         display: inline-block;
@@ -594,7 +552,7 @@ export default function CustomerPortalApp() {
       .modal-overlay {
         position: fixed;
         inset: 0;
-        background: rgba(15, 23, 42, 0.6);
+        background: rgba(15, 23, 42, 0.4);
         backdrop-filter: blur(4px);
         display: flex;
         align-items: center;
@@ -602,13 +560,13 @@ export default function CustomerPortalApp() {
         z-index: 50;
       }
       .modal-box {
-        background: var(--bg-card);
-        border: 1px solid var(--border-color);
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
         border-radius: 16px;
         padding: 28px;
         width: 100%;
         max-width: 460px;
-        box-shadow: var(--shadow-lg);
+        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
       }
 
       .toast {
@@ -621,7 +579,7 @@ export default function CustomerPortalApp() {
         border-radius: 8px;
         font-size: 13px;
         font-weight: 600;
-        box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        box-shadow: 0 10px 30px rgba(0,0,0,0.2);
         z-index: 100;
       }
     `}>
@@ -631,22 +589,18 @@ export default function CustomerPortalApp() {
           <div className="nav-left">
             <div className="brand-title">
               <span>⚡ AEGISPAY</span>
-              <span style={{ fontSize: '11px', color: 'var(--text-secondary)', fontWeight: 500 }}>uReact v2.3</span>
+              <span style={{ fontSize: '11px', color: '#64748b', fontWeight: 500 }}>uReact v2.3</span>
             </div>
             <div className="badge-testnet">● Sandbox Testnet</div>
           </div>
 
           <div className="nav-right">
-            <button className="btn-theme" onClick={() => store.toggleTheme()}>
-              {isLight ? '🌙 Dark Mode' : '☀️ Light Mode'}
-            </button>
-
             <Show when={store.isAuthenticated}>
               <div className="user-pill">
-                <div className="user-avatar">{store.userName.charAt(0)}</div>
+                <div className="user-avatar">{store.userName ? store.userName.charAt(0) : 'U'}</div>
                 <div>
                   <div style={{ fontWeight: 700, fontSize: '12px' }}>{store.userEmail}</div>
-                  <div style={{ fontSize: '10px', color: 'var(--brand-accent)' }}>● Tier-2 KYC Verified</div>
+                  <div style={{ fontSize: '10px', color: '#10b981' }}>● Tier-2 KYC Verified</div>
                 </div>
               </div>
               <button className="btn-logout" onClick={() => store.logout()}>
@@ -696,7 +650,7 @@ export default function CustomerPortalApp() {
               <div className="demo-autofill">
                 <span>Demo Account: <strong>demo@aegispay.io</strong></span>
                 <button
-                  style={{ background: 'transparent', border: 'none', color: 'var(--brand-primary)', fontWeight: 700, cursor: 'pointer' }}
+                  style={{ background: 'transparent', border: 'none', color: '#4f46e5', fontWeight: 700, cursor: 'pointer' }}
                   onClick={() => {
                     setLoginInputEmail('demo@aegispay.io');
                     setLoginInputPassword('••••••••••••');
@@ -715,12 +669,12 @@ export default function CustomerPortalApp() {
             {/* Header Telemetry */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
               <div>
-                <h1 style={{ fontSize: '24px', fontWeight: 800, margin: '0 0 4px 0' }}>Custody & Balances</h1>
-                <div style={{ color: 'var(--text-secondary)', fontSize: '13px' }}>
+                <h1 style={{ fontSize: '24px', fontWeight: 800, margin: '0 0 4px 0', color: '#0f172a' }}>Custody & Balances</h1>
+                <div style={{ color: '#64748b', fontSize: '13px' }}>
                   Real-time Double-Entry Ledger Balances (Anti-Spoofing & Watch-Only Indexing)
                 </div>
               </div>
-              <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
+              <div style={{ fontSize: '12px', color: '#64748b' }}>
                 Live Stream Ticks: <SignalValue signal={liveTickSignal} />
               </div>
             </div>
@@ -730,7 +684,7 @@ export default function CustomerPortalApp() {
               <div className="card">
                 <div className="card-title">
                   <span>Funding Balance (USDT)</span>
-                  <span style={{ color: 'var(--brand-accent)' }}>● Inbound</span>
+                  <span style={{ color: '#10b981' }}>● Inbound</span>
                 </div>
                 <div className="card-amount">{store.fundingUsdt} <span style={{ fontSize: '16px' }}>USDT</span></div>
                 <div className="card-subtext">Direct on-chain deposit settlements</div>
@@ -742,7 +696,7 @@ export default function CustomerPortalApp() {
               <div className="card">
                 <div className="card-title">
                   <span>Trading Balance (USDT)</span>
-                  <span style={{ color: 'var(--brand-primary)' }}>● Spot Ledger</span>
+                  <span style={{ color: '#4f46e5' }}>● Spot Ledger</span>
                 </div>
                 <div className="card-amount">{store.tradingUsdt} <span style={{ fontSize: '16px' }}>USDT</span></div>
                 <div className="card-subtext">Allocated for spot order execution</div>
@@ -837,7 +791,7 @@ export default function CustomerPortalApp() {
                   className="qr-wrapper"
                   dangerouslySetInnerHTML={{ __html: renderQRCodeSvg(store.currentAddress || 'AegisPay-Testnet', 180) }}
                 />
-                <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '16px', textAlign: 'center', maxWidth: '300px' }}>
+                <div style={{ fontSize: '12px', color: '#64748b', marginTop: '16px', textAlign: 'center', maxWidth: '300px' }}>
                   Scan with any testnet mobile wallet. Only send {store.selectedAsset.toUpperCase()} to this address.
                 </div>
               </div>
@@ -860,7 +814,7 @@ export default function CustomerPortalApp() {
                 <tbody>
                   <For each={store.transactions} fallback={
                     <tr>
-                      <td colSpan={6} style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '24px' }}>
+                      <td colSpan={6} style={{ textAlign: 'center', color: '#94a3b8', padding: '24px' }}>
                         No transactions recorded yet. Click "Simulate 10 USDT Deposit" above!
                       </td>
                     </tr>
@@ -872,13 +826,13 @@ export default function CustomerPortalApp() {
                         </td>
                         <td>{tx.networkId}</td>
                         <td><strong>{tx.assetId ? tx.assetId.toUpperCase() : 'USDT'}</strong></td>
-                        <td style={{ fontWeight: 700, color: 'var(--brand-accent)' }}>+{tx.amountDecimal}</td>
+                        <td style={{ fontWeight: 700, color: '#10b981' }}>+{tx.amountDecimal}</td>
                         <td>
                           <span className={`status-pill ${tx.status === 'CREDITED' ? 'status-credited' : 'status-pending'}`}>
                             {tx.status}
                           </span>
                         </td>
-                        <td style={{ color: 'var(--text-secondary)', fontSize: '12px' }}>
+                        <td style={{ color: '#64748b', fontSize: '12px' }}>
                           {new Date(tx.createdAt || tx.timestamp).toLocaleTimeString()}
                         </td>
                       </tr>
@@ -892,10 +846,10 @@ export default function CustomerPortalApp() {
             <Show when={store.isTransferModalOpen}>
               <div className="modal-overlay">
                 <div className="modal-box">
-                  <h3 style={{ fontSize: '18px', fontWeight: 800, margin: '0 0 8px 0', color: 'var(--text-primary)' }}>
+                  <h3 style={{ fontSize: '18px', fontWeight: 800, margin: '0 0 8px 0', color: '#0f172a' }}>
                     Internal Balance Allocation
                   </h3>
-                  <p style={{ fontSize: '13px', color: 'var(--text-secondary)', margin: '0 0 20px 0' }}>
+                  <p style={{ fontSize: '13px', color: '#64748b', margin: '0 0 20px 0' }}>
                     Transfer funds from <strong>Funding Account</strong> (on-chain deposits) to <strong>Trading Account</strong> (active spot orders).
                   </p>
 
@@ -907,7 +861,7 @@ export default function CustomerPortalApp() {
                       value={store.transferAmount}
                       onChange={(e) => (store.transferAmount = e.target.value)}
                     />
-                    <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '4px' }}>
+                    <div style={{ fontSize: '11px', color: '#64748b', marginTop: '4px' }}>
                       Available in Funding: {store.fundingUsdt} USDT
                     </div>
                   </div>
@@ -915,7 +869,7 @@ export default function CustomerPortalApp() {
                   <div style={{ display: 'flex', gap: '10px', marginTop: '24px' }}>
                     <button
                       className="btn-primary"
-                      style={{ background: 'var(--bg-card-subtle)', color: 'var(--text-primary)' }}
+                      style={{ background: '#f1f5f9', color: '#0f172a' }}
                       onClick={() => store.closeTransfer()}
                     >
                       Cancel

@@ -37,8 +37,8 @@ export function scopeCSS(rawCSS: string, scopeId: string): string {
       .map((sel: string) => {
         const s = sel.trim();
         if (!s) return '';
-        // Handle :host or & to target the scoped container itself
-        if (s === ':host' || s === '&') {
+        // Handle :host, &, or :root to target the scoped container itself
+        if (s === ':host' || s === '&' || s === ':root') {
           return scopeSelector;
         }
         if (s.startsWith(':host(')) {
