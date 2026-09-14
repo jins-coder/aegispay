@@ -1,5 +1,5 @@
 // Lightweight standalone SVG QR Code generator for AegisPay Deposit Interface
-export function renderQRCodeSvg(text, size = 180) {
+export function renderQRCodeSvg(text: string, size: number = 180): string {
   // Simple deterministic pattern generator for addresses
   const hash = Array.from(text).reduce((acc, char) => (acc * 31 + char.charCodeAt(0)) % 1000000007, 0);
   const matrixSize = 25;
@@ -22,7 +22,7 @@ export function renderQRCodeSvg(text, size = 180) {
         if (localR === 0 || localR === 6 || localC === 0 || localC === 6) isFilled = true;
         else if (localR >= 2 && localR <= 4 && localC >= 2 && localC <= 4) isFilled = true;
       } else {
-        // Pseudo-random pseudo-QR pattern derived from string hash
+        // Pseudo-random pattern derived from string hash
         const bit = ((hash * (r * matrixSize + c + 1)) % 23) > 10;
         isFilled = bit;
       }

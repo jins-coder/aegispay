@@ -9,7 +9,7 @@ import {
   Show,
   DevTools
 } from 'ureact';
-import { renderQRCodeSvg } from './qrcode.js';
+import { renderQRCodeSvg } from './qrcode';
 
 const API_BASE = 'http://localhost:3000';
 
