@@ -18,11 +18,7 @@
     "README.md"
   ],
   "scripts": {
-    "dev": "vite",
-    "build:lib": "vite build --config vite.config.lib.ts && tsc -p tsconfig.lib.json",
-    "build:demo": "vite build",
-    "build:ext": "tsc -p vscode-extension/tsconfig.json",
-    "build": "npm run build:lib && npm run build:demo && npm run build:ext",
+    "build": "vite build --config vite.config.lib.ts && tsc -p tsconfig.lib.json",
     "preview": "vite preview"
   },
   "keywords": [

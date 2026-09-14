@@ -51,6 +51,27 @@ export function createAdminApiServer(options?: { ledger?: LedgerEngine }) {
     };
 
     try {
+      // 0. GET / (Admin Service Info)
+      if (req.method === 'GET' && (url.pathname === '/' || url.pathname === '/health')) {
+        return sendJson(200, {
+          service: 'AegisPay Admin Operations API Gateway',
+          version: 'v1',
+          status: 'HEALTHY',
+          environment: 'testnet',
+          mainnetEnabled: false,
+          withdrawalsEnabled: false,
+          endpoints: [
+            '/v1/admin/overview',
+            '/v1/admin/networks',
+            '/v1/admin/networks/:id/pause',
+            '/v1/admin/treasury',
+            '/v1/admin/audit-events'
+          ],
+          operationsConsoleUrl: 'http://localhost:4001',
+          customerPortalUrl: 'http://localhost:4000'
+        });
+      }
+
       // 1. GET /v1/admin/overview
       if (req.method === 'GET' && url.pathname === '/v1/admin/overview') {
         return sendJson(200, {

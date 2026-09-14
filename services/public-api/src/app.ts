@@ -65,6 +65,30 @@ export function createPublicApiServer(options?: {
     };
 
     try {
+      // 0. GET / (Service Info)
+      if (req.method === 'GET' && (url.pathname === '/' || url.pathname === '/health')) {
+        return sendJson(200, {
+          service: 'AegisPay Public API Gateway',
+          version: 'v1',
+          status: 'HEALTHY',
+          environment: 'testnet',
+          mainnetEnabled: false,
+          endpoints: [
+            '/v1/account',
+            '/v1/networks',
+            '/v1/asset-networks',
+            '/v1/deposit-addresses/ensure',
+            '/v1/deposit-addresses',
+            '/v1/balances',
+            '/v1/internal-transfers',
+            '/v1/deposits',
+            '/v1/transactions'
+          ],
+          customerPortalUrl: 'http://localhost:4000',
+          operationsConsoleUrl: 'http://localhost:4001'
+        });
+      }
+
       // 1. GET /v1/account
       if (req.method === 'GET' && url.pathname === '/v1/account') {
         const user = users.get(userId) || {
