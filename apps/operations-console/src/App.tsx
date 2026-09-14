@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   createStore,
   useStore,
@@ -14,6 +14,17 @@ const ADMIN_API = 'http://localhost:3001';
 
 // Reactive uReact Store for Operations Console
 export const opsStore = createStore({
+  // Admin Auth
+  isAuthenticated: false,
+  adminEmail: '',
+  adminName: '',
+  adminRole: 'SECURITY_OFFICER',
+  isAuthenticating: false,
+
+  // Theme
+  theme: 'light' as 'light' | 'dark',
+
+  // Operations Data
   solvencyStatus: 'HEALTHY',
   totalVolumeUsd: '4,850,200.00',
   pendingDeposits: 3,
@@ -21,9 +32,32 @@ export const opsStore = createStore({
   auditLogs: [] as any[],
   vaults: [] as any[],
   activeTab: 'overview' as 'overview' | 'networks' | 'treasury' | 'audit',
+  toastMsg: '',
 
+  toggleTheme() {
+    this.theme = this.theme === 'light' ? 'dark' : 'light';
+  },
+  login(email: string, name: string, role: string) {
+    this.isAuthenticated = true;
+    this.adminEmail = email;
+    this.adminName = name;
+    this.adminRole = role;
+    localStorage.setItem('aegispay_admin', JSON.stringify({ email, name, role }));
+  },
+  logout() {
+    this.isAuthenticated = false;
+    this.adminEmail = '';
+    this.adminName = '';
+    localStorage.removeItem('aegispay_admin');
+  },
   setTab(tab: 'overview' | 'networks' | 'treasury' | 'audit') {
     this.activeTab = tab;
+  },
+  showToast(msg: string) {
+    this.toastMsg = msg;
+    setTimeout(() => {
+      this.toastMsg = '';
+    }, 2500);
   }
 });
 
@@ -31,8 +65,26 @@ export const opsTickSignal = signal(0);
 
 export default function OperationsConsoleApp() {
   const store = useStore(opsStore);
+  const [adminInputEmail, setAdminInputEmail] = useState('admin@aegispay.internal');
+  const [adminInputPass, setAdminInputPass] = useState('••••••••••••');
+
+  // Check saved admin session
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('aegispay_admin');
+      if (saved) {
+        const a = JSON.parse(saved);
+        if (a && a.email) {
+          store.login(a.email, a.name || 'Security Ops Admin', a.role || 'SECURITY_OFFICER');
+        }
+      }
+    } catch {
+      // ignore
+    }
+  }, []);
 
   const fetchAdminData = async () => {
+    if (!store.isAuthenticated) return;
     try {
       // 1. Overview
       const ovRes = await fetch(`${ADMIN_API}/v1/admin/overview`);
@@ -69,13 +121,37 @@ export default function OperationsConsoleApp() {
   };
 
   useEffect(() => {
-    fetchAdminData();
-    const interval = setInterval(fetchAdminData, 4000);
-    return () => clearInterval(interval);
-  }, []);
+    if (store.isAuthenticated) {
+      fetchAdminData();
+      const interval = setInterval(fetchAdminData, 3500);
+      return () => clearInterval(interval);
+    }
+  }, [store.isAuthenticated]);
+
+  const handleAdminLoginSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    store.isAuthenticating = true;
+    try {
+      const res = await fetch(`${ADMIN_API}/v1/admin/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: adminInputEmail })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        store.login(data.user.email, data.user.name, data.user.role);
+      } else {
+        store.login(adminInputEmail, 'Security Ops Admin', 'SECURITY_OFFICER');
+      }
+    } catch {
+      store.login(adminInputEmail, 'Security Ops Admin', 'SECURITY_OFFICER');
+    } finally {
+      store.isAuthenticating = false;
+    }
+  };
 
   const handleTogglePause = async (networkId: string) => {
-    const reason = prompt('Enter mandatory reason for circuit breaker state change:', 'Routine operational check');
+    const reason = prompt('Enter mandatory compliance justification for circuit breaker change:', 'Routine security audit & inspection');
     if (!reason) return;
 
     try {
@@ -86,6 +162,7 @@ export default function OperationsConsoleApp() {
       });
 
       if (res.ok) {
+        store.showToast(`Updated circuit breaker status for ${networkId}`);
         await fetchAdminData();
       }
     } catch (err) {
@@ -93,215 +170,468 @@ export default function OperationsConsoleApp() {
     }
   };
 
+  const isLight = store.theme === 'light';
+
   return (
     <Scoped css={`
-      .ops-root {
-        display: flex; min-height: 100vh; background: #090d16; color: #f8fafc;
-        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      :root {
+        --bg-page: ${isLight ? '#f8fafc' : '#090d16'};
+        --bg-card: ${isLight ? '#ffffff' : '#0f172a'};
+        --bg-sidebar: ${isLight ? '#ffffff' : '#0a0f1d'};
+        --bg-card-subtle: ${isLight ? '#f1f5f9' : '#1e293b'};
+        --border-color: ${isLight ? '#e2e8f0' : '#1e293b'};
+        --text-primary: ${isLight ? '#0f172a' : '#f8fafc'};
+        --text-secondary: ${isLight ? '#64748b' : '#94a3b8'};
+        --text-muted: ${isLight ? '#94a3b8' : '#64748b'};
+        --brand-primary: #0284c7;
+        --brand-accent: #10b981;
+        --shadow-sm: ${isLight ? '0 1px 3px rgba(0,0,0,0.06)' : '0 1px 3px rgba(0,0,0,0.3)'};
+        --shadow-md: ${isLight ? '0 4px 12px rgba(0,0,0,0.05)' : '0 4px 16px rgba(0,0,0,0.4)'};
+        --shadow-lg: ${isLight ? '0 10px 25px rgba(0,0,0,0.08)' : '0 10px 30px rgba(0,0,0,0.6)'};
       }
+
+      .ops-layout {
+        display: flex;
+        min-height: 100vh;
+        background-color: var(--bg-page);
+        color: var(--text-primary);
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Inter, sans-serif;
+        transition: background-color 0.25s ease;
+      }
+
+      /* Sidebar */
       .sidebar {
-        width: 250px; background: #0f172a; border-right: 1px solid #1e293b; padding: 24px 16px;
+        width: 260px;
+        background: var(--bg-sidebar);
+        border-right: 1px solid var(--border-color);
+        padding: 24px 16px;
+        display: flex;
+        flex-direction: column;
       }
-      .main { flex: 1; padding: 32px; overflow-y: auto; }
-      .logo { font-size: 16px; font-weight: 800; letter-spacing: 0.05em; color: #38bdf8; margin-bottom: 4px; }
-      .role-badge {
-        display: inline-block; background: rgba(56, 189, 248, 0.15); color: #38bdf8; border: 1px solid #38bdf8;
-        font-size: 11px; padding: 2px 6px; border-radius: 4px; margin-bottom: 24px;
+      .logo-box {
+        font-size: 16px;
+        font-weight: 800;
+        letter-spacing: 0.05em;
+        color: var(--brand-primary);
+        margin-bottom: 6px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .role-tag {
+        display: inline-block;
+        background: ${isLight ? 'rgba(2, 132, 199, 0.1)' : 'rgba(56, 189, 248, 0.15)'};
+        color: var(--brand-primary);
+        border: 1px solid var(--brand-primary);
+        font-size: 11px;
+        font-weight: 700;
+        padding: 2px 6px;
+        border-radius: 4px;
+        margin-bottom: 24px;
       }
       .nav-btn {
-        display: block; width: 100%; text-align: left; padding: 10px 12px; margin-bottom: 6px;
-        border-radius: 6px; color: #94a3b8; background: transparent; border: none; font-size: 13px;
-        font-weight: 500; cursor: pointer; transition: all 0.2s;
+        display: block;
+        width: 100%;
+        text-align: left;
+        padding: 10px 14px;
+        margin-bottom: 6px;
+        border-radius: 8px;
+        color: var(--text-secondary);
+        background: transparent;
+        border: none;
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s;
       }
-      .nav-btn.active, .nav-btn:hover { background: #1e293b; color: #fff; }
-      .metrics-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 32px; }
+      .nav-btn.active, .nav-btn:hover {
+        background: var(--bg-card-subtle);
+        color: var(--text-primary);
+      }
+
+      /* Main */
+      .main-content {
+        flex: 1;
+        padding: 32px 36px;
+        overflow-y: auto;
+      }
+      .topbar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 28px;
+      }
+
+      /* Metrics Grid */
+      .metrics-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 16px;
+        margin-bottom: 32px;
+      }
       .metric-card {
-        background: #0f172a; border: 1px solid #1e293b; border-radius: 8px; padding: 20px;
+        background: var(--bg-card);
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        padding: 20px;
+        box-shadow: var(--shadow-sm);
       }
-      .metric-lbl { font-size: 11px; color: #64748b; text-transform: uppercase; margin-bottom: 6px; }
-      .metric-val { font-size: 24px; font-weight: 700; font-family: monospace; }
+      .metric-lbl {
+        font-size: 11px;
+        font-weight: 700;
+        text-transform: uppercase;
+        color: var(--text-secondary);
+        margin-bottom: 8px;
+      }
+      .metric-val {
+        font-size: 24px;
+        font-weight: 800;
+        font-family: ui-monospace, SFMono-Regular, monospace;
+      }
+
+      /* Panels */
       .panel {
-        background: #0f172a; border: 1px solid #1e293b; border-radius: 8px; padding: 24px; margin-bottom: 24px;
+        background: var(--bg-card);
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        padding: 24px;
+        margin-bottom: 28px;
+        box-shadow: var(--shadow-sm);
       }
-      .panel-header { font-size: 16px; font-weight: 700; margin-bottom: 16px; }
-      table { width: 100%; border-collapse: collapse; }
-      th { text-align: left; font-size: 11px; color: #64748b; text-transform: uppercase; padding: 10px; border-bottom: 1px solid #1e293b; }
-      td { padding: 12px 10px; font-size: 13px; border-bottom: 1px solid #1e293b; font-family: monospace; }
+      .panel-header {
+        font-size: 16px;
+        font-weight: 800;
+        margin-bottom: 18px;
+        color: var(--text-primary);
+      }
+      
+      table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+      th {
+        text-align: left;
+        font-size: 11px;
+        font-weight: 700;
+        color: var(--text-secondary);
+        text-transform: uppercase;
+        padding: 12px 10px;
+        border-bottom: 1px solid var(--border-color);
+      }
+      td {
+        padding: 14px 10px;
+        font-size: 13px;
+        border-bottom: 1px solid var(--border-color);
+        color: var(--text-primary);
+      }
+
       .btn-danger {
-        background: rgba(239, 68, 68, 0.15); color: #ef4444; border: 1px solid #ef4444;
-        padding: 6px 12px; border-radius: 4px; font-size: 12px; font-weight: 600; cursor: pointer;
+        background: rgba(239, 68, 68, 0.1);
+        color: #ef4444;
+        border: 1px solid rgba(239, 68, 68, 0.3);
+        padding: 6px 14px;
+        border-radius: 6px;
+        font-size: 12px;
+        font-weight: 700;
+        cursor: pointer;
+        transition: all 0.2s;
       }
+      .btn-danger:hover { background: #ef4444; color: #ffffff; }
+
       .btn-success {
-        background: rgba(16, 185, 129, 0.15); color: #10b981; border: 1px solid #10b981;
-        padding: 6px 12px; border-radius: 4px; font-size: 12px; font-weight: 600; cursor: pointer;
+        background: rgba(16, 185, 129, 0.1);
+        color: #10b981;
+        border: 1px solid rgba(16, 185, 129, 0.3);
+        padding: 6px 14px;
+        border-radius: 6px;
+        font-size: 12px;
+        font-weight: 700;
+        cursor: pointer;
+        transition: all 0.2s;
+      }
+      .btn-success:hover { background: #10b981; color: #ffffff; }
+
+      /* Admin Login */
+      .login-container {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 40px;
+      }
+      .admin-login-card {
+        background: var(--bg-card);
+        border: 1px solid var(--border-color);
+        border-radius: 16px;
+        padding: 40px;
+        width: 100%;
+        max-width: 440px;
+        box-shadow: var(--shadow-lg);
       }
     `}>
-      <div className="ops-root">
-        {/* Sidebar */}
-        <aside className="sidebar">
-          <div className="logo">AEGISPAY OPS ⚛️</div>
-          <div className="role-badge">Security & Treasury Admin</div>
+      <div className="ops-layout">
+        {/* Unauthenticated Admin Login */}
+        <Show when={!store.isAuthenticated}>
+          <div className="login-container">
+            <div className="admin-login-card">
+              <div style={{ textAlign: 'center', marginBottom: '28px' }}>
+                <div style={{ fontSize: '20px', fontWeight: 800, color: 'var(--brand-primary)', marginBottom: '6px' }}>
+                  🛡️ AEGISPAY SECURITY CONSOLE
+                </div>
+                <div style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
+                  Privileged Admin & Treasury Access
+                </div>
+              </div>
 
-          <button
-            className={`nav-btn ${store.activeTab === 'overview' ? 'active' : ''}`}
-            onClick={() => store.setTab('overview')}
-          >
-            Overview & Telemetry
-          </button>
-          <button
-            className={`nav-btn ${store.activeTab === 'networks' ? 'active' : ''}`}
-            onClick={() => store.setTab('networks')}
-          >
-            Network Circuit Breakers
-          </button>
-          <button
-            className={`nav-btn ${store.activeTab === 'treasury' ? 'active' : ''}`}
-            onClick={() => store.setTab('treasury')}
-          >
-            Cold Vaults & Treasury
-          </button>
-          <button
-            className={`nav-btn ${store.activeTab === 'audit' ? 'active' : ''}`}
-            onClick={() => store.setTab('audit')}
-          >
-            Immutable Audit Trail
-          </button>
-        </aside>
+              <form onSubmit={handleAdminLoginSubmit}>
+                <div style={{ marginBottom: '16px' }}>
+                  <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, marginBottom: '6px' }}>Admin ID</label>
+                  <input
+                    type="email"
+                    style={{
+                      width: '100%', padding: '10px 14px', borderRadius: '8px',
+                      border: '1px solid var(--border-color)', background: 'var(--bg-card)',
+                      color: 'var(--text-primary)', boxSizing: 'border-box'
+                    }}
+                    value={adminInputEmail}
+                    onChange={(e) => setAdminInputEmail(e.target.value)}
+                    required
+                  />
+                </div>
 
-        {/* Main Content */}
-        <main className="main">
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-            <h2 style={{ fontSize: '20px', fontWeight: 800, margin: 0 }}>Gateway Operations & Compliance Console</h2>
-            <div style={{ color: '#64748b', fontSize: '12px' }}>
-              Telemetry Syncs: <SignalValue value={opsTickSignal} />
+                <div style={{ marginBottom: '24px' }}>
+                  <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, marginBottom: '6px' }}>Security Secret</label>
+                  <input
+                    type="password"
+                    style={{
+                      width: '100%', padding: '10px 14px', borderRadius: '8px',
+                      border: '1px solid var(--border-color)', background: 'var(--bg-card)',
+                      color: 'var(--text-primary)', boxSizing: 'border-box'
+                    }}
+                    value={adminInputPass}
+                    onChange={(e) => setAdminInputPass(e.target.value)}
+                    required
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  style={{
+                    width: '100%', padding: '12px', background: 'var(--brand-primary)',
+                    color: '#ffffff', border: 'none', borderRadius: '8px',
+                    fontWeight: 700, cursor: 'pointer'
+                  }}
+                  disabled={store.isAuthenticating}
+                >
+                  {store.isAuthenticating ? 'Verifying Credentials...' : 'Authenticate as Admin'}
+                </button>
+              </form>
             </div>
           </div>
+        </Show>
 
-          {/* Metrics Grid */}
-          <div className="metrics-grid">
-            <div className="metric-card">
-              <div className="metric-lbl">Solvency Status</div>
-              <div className="metric-val" style={{ color: '#10b981' }}>{store.solvencyStatus}</div>
-            </div>
-            <div className="metric-card">
-              <div className="metric-lbl">24h Confirmed Volume</div>
-              <div className="metric-val">${store.totalVolumeUsd}</div>
-            </div>
-            <div className="metric-card">
-              <div className="metric-lbl">TRON Nile Scanner Lag</div>
-              <div className="metric-val" style={{ color: '#10b981' }}>0 blocks</div>
-            </div>
-            <div className="metric-card">
-              <div className="metric-lbl">Mainnet Status</div>
-              <div className="metric-val" style={{ color: '#f59e0b', fontSize: '15px' }}>GATED (TESTNET ONLY)</div>
-            </div>
-          </div>
+        {/* Authenticated Console */}
+        <Show when={store.isAuthenticated}>
+          {/* Sidebar */}
+          <aside className="sidebar">
+            <div className="logo-box">🛡️ AEGISPAY OPS</div>
+            <div className="role-tag">Level 4 Security Officer</div>
 
-          {/* Tab 1: Overview / Networks */}
-          <Show when={store.activeTab === 'overview' || store.activeTab === 'networks'}>
-            <div className="panel">
-              <div className="panel-header">Network Controls & Emergency Circuit Breakers</div>
-              <table>
-                <thead>
-                  <tr>
-                    <th>Network</th>
-                    <th>Family</th>
-                    <th>Chain ID</th>
-                    <th>Status</th>
-                    <th>Depth</th>
-                    <th>Emergency Action</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <For each={store.networks}>
-                    {(n) => (
-                      <tr key={n.id}>
-                        <td><strong>{n.name}</strong></td>
-                        <td>{n.family.toUpperCase()}</td>
-                        <td>{n.chainId}</td>
-                        <td style={{ color: n.isPaused ? '#ef4444' : '#10b981', fontWeight: 600 }}>
-                          {n.isPaused ? 'PAUSED' : 'ACTIVE'}
-                        </td>
-                        <td>{n.confirmationDepth} blocks</td>
-                        <td>
-                          <button
-                            className={n.isPaused ? 'btn-success' : 'btn-danger'}
-                            onClick={() => handleTogglePause(n.id)}
-                          >
-                            {n.isPaused ? 'Resume Traffic' : 'Emergency Pause'}
-                          </button>
-                        </td>
-                      </tr>
-                    )}
-                  </For>
-                </tbody>
-              </table>
-            </div>
-          </Show>
+            <button
+              className={`nav-btn ${store.activeTab === 'overview' ? 'active' : ''}`}
+              onClick={() => store.setTab('overview')}
+            >
+              📊 Overview & Telemetry
+            </button>
+            <button
+              className={`nav-btn ${store.activeTab === 'networks' ? 'active' : ''}`}
+              onClick={() => store.setTab('networks')}
+            >
+              ⚡ Network Circuit Breakers
+            </button>
+            <button
+              className={`nav-btn ${store.activeTab === 'treasury' ? 'active' : ''}`}
+              onClick={() => store.setTab('treasury')}
+            >
+              🏦 Cold Vaults & Treasury
+            </button>
+            <button
+              className={`nav-btn ${store.activeTab === 'audit' ? 'active' : ''}`}
+              onClick={() => store.setTab('audit')}
+            >
+              📜 Immutable Audit Trail
+            </button>
 
-          {/* Tab 2: Treasury */}
-          <Show when={store.activeTab === 'treasury'}>
-            <div className="panel">
-              <div className="panel-header">On-Chain Custody & Cold Vault Reserves</div>
-              <table>
-                <thead>
-                  <tr>
-                    <th>Asset</th>
-                    <th>Vault Location</th>
-                    <th>Controlled Vault Balance</th>
-                    <th>Allowlisted Public Address</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <For each={store.vaults}>
-                    {(v: any) => (
-                      <tr key={v.address}>
-                        <td><strong>{v.asset}</strong></td>
-                        <td>{v.location}</td>
-                        <td style={{ color: '#10b981', fontWeight: 600 }}>{v.balanceDecimal}</td>
-                        <td style={{ color: '#64748b', fontSize: '12px' }}>{v.address}</td>
-                      </tr>
-                    )}
-                  </For>
-                </tbody>
-              </table>
-            </div>
-          </Show>
+            <div style={{ marginTop: 'auto', paddingTop: '20px', borderTop: '1px solid var(--border-color)' }}>
+              <button
+                onClick={() => store.toggleTheme()}
+                style={{
+                  width: '100%', padding: '8px 12px', borderRadius: '6px',
+                  background: 'var(--bg-card-subtle)', border: '1px solid var(--border-color)',
+                  color: 'var(--text-primary)', cursor: 'pointer', marginBottom: '8px',
+                  fontSize: '12px', fontWeight: 600
+                }}
+              >
+                {isLight ? '🌙 Dark Mode' : '☀️ Light Mode'}
+              </button>
 
-          {/* Tab 3: Audit */}
-          <Show when={store.activeTab === 'audit'}>
-            <div className="panel">
-              <div className="panel-header">Tamper-Evident Operations Audit Trail</div>
-              <table>
-                <thead>
-                  <tr>
-                    <th>Audit ID</th>
-                    <th>Actor</th>
-                    <th>Action</th>
-                    <th>Resource</th>
-                    <th>Timestamp</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <For each={store.auditLogs} fallback={<tr><td colSpan={5} style={{ textAlign: 'center', color: '#64748b' }}>No recent privileged actions recorded</td></tr>}>
-                    {(a: any) => (
-                      <tr key={a.id}>
-                        <td style={{ fontSize: '11px' }}>{a.id}</td>
-                        <td>{a.actorId} ({a.actorRole})</td>
-                        <td><strong>{a.action}</strong></td>
-                        <td>{a.resourceType}:{a.resourceId}</td>
-                        <td>{new Date(a.timestamp).toLocaleTimeString()}</td>
-                      </tr>
-                    )}
-                  </For>
-                </tbody>
-              </table>
+              <button
+                onClick={() => store.logout()}
+                style={{
+                  width: '100%', padding: '8px 12px', borderRadius: '6px',
+                  background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.3)',
+                  color: '#ef4444', cursor: 'pointer',
+                  fontSize: '12px', fontWeight: 600
+                }}
+              >
+                Logout Session
+              </button>
             </div>
-          </Show>
+          </aside>
 
-          {/* Embedded uReact Quantum DevTools HUD */}
-          <DevTools />
-        </main>
+          {/* Main Body */}
+          <main className="main-content">
+            <div className="topbar">
+              <div>
+                <h1 style={{ fontSize: '22px', fontWeight: 800, margin: '0 0 4px 0' }}>
+                  Gateway Operations & Compliance Console
+                </h1>
+                <div style={{ color: 'var(--text-secondary)', fontSize: '13px' }}>
+                  Logged in as <strong>{store.adminEmail}</strong> (Active Session)
+                </div>
+              </div>
+
+              <div style={{ color: 'var(--text-secondary)', fontSize: '12px' }}>
+                Telemetry Syncs: <SignalValue value={opsTickSignal} />
+              </div>
+            </div>
+
+            {/* Metrics */}
+            <div className="metrics-grid">
+              <div className="metric-card">
+                <div className="metric-lbl">Solvency Status</div>
+                <div className="metric-val" style={{ color: '#10b981' }}>{store.solvencyStatus}</div>
+              </div>
+              <div className="metric-card">
+                <div className="metric-lbl">24h Confirmed Volume</div>
+                <div className="metric-val">${store.totalVolumeUsd}</div>
+              </div>
+              <div className="metric-card">
+                <div className="metric-lbl">TRON Scanner Lag</div>
+                <div className="metric-val" style={{ color: '#10b981' }}>0 blocks</div>
+              </div>
+              <div className="metric-card">
+                <div className="metric-lbl">Mainnet Status</div>
+                <div className="metric-val" style={{ color: '#f59e0b', fontSize: '15px' }}>TESTNET ONLY</div>
+              </div>
+            </div>
+
+            {/* Tab 1: Overview & Networks */}
+            <Show when={store.activeTab === 'overview' || store.activeTab === 'networks'}>
+              <div className="panel">
+                <div className="panel-header">Network Controls & Emergency Circuit Breakers</div>
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Network</th>
+                      <th>Family</th>
+                      <th>Chain ID</th>
+                      <th>Status</th>
+                      <th>Confirmation Depth</th>
+                      <th>Emergency Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <For each={store.networks}>
+                      {(n: any) => (
+                        <tr key={n.id}>
+                          <td><strong>{n.name}</strong></td>
+                          <td>{n.family.toUpperCase()}</td>
+                          <td>{n.chainId}</td>
+                          <td style={{ color: n.isPaused ? '#ef4444' : '#10b981', fontWeight: 700 }}>
+                            {n.isPaused ? 'PAUSED' : 'ACTIVE'}
+                          </td>
+                          <td>{n.confirmationDepth} blocks</td>
+                          <td>
+                            <button
+                              className={n.isPaused ? 'btn-success' : 'btn-danger'}
+                              onClick={() => handleTogglePause(n.id)}
+                            >
+                              {n.isPaused ? 'Resume Traffic' : 'Emergency Pause'}
+                            </button>
+                          </td>
+                        </tr>
+                      )}
+                    </For>
+                  </tbody>
+                </table>
+              </div>
+            </Show>
+
+            {/* Tab 2: Treasury */}
+            <Show when={store.activeTab === 'treasury'}>
+              <div className="panel">
+                <div className="panel-header">On-Chain Custody & Cold Vault Reserves</div>
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Asset</th>
+                      <th>Vault Location</th>
+                      <th>Controlled Vault Balance</th>
+                      <th>Allowlisted Public Address</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <For each={store.vaults}>
+                      {(v: any) => (
+                        <tr key={v.address}>
+                          <td><strong>{v.asset}</strong></td>
+                          <td>{v.location}</td>
+                          <td style={{ color: '#10b981', fontWeight: 700 }}>{v.balanceDecimal}</td>
+                          <td style={{ color: 'var(--text-secondary)', fontFamily: 'monospace', fontSize: '12px' }}>{v.address}</td>
+                        </tr>
+                      )}
+                    </For>
+                  </tbody>
+                </table>
+              </div>
+            </Show>
+
+            {/* Tab 3: Audit */}
+            <Show when={store.activeTab === 'audit'}>
+              <div className="panel">
+                <div className="panel-header">Tamper-Evident Operations Audit Trail</div>
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Audit ID</th>
+                      <th>Actor</th>
+                      <th>Action</th>
+                      <th>Resource</th>
+                      <th>Timestamp</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <For each={store.auditLogs} fallback={<tr><td colSpan={5} style={{ textAlign: 'center', color: 'var(--text-muted)' }}>No recent privileged actions</td></tr>}>
+                      {(a: any) => (
+                        <tr key={a.id}>
+                          <td style={{ fontSize: '11px', fontFamily: 'monospace' }}>{a.id}</td>
+                          <td>{a.actorId} ({a.actorRole})</td>
+                          <td><strong>{a.action}</strong></td>
+                          <td>{a.resourceType}:{a.resourceId}</td>
+                          <td style={{ color: 'var(--text-secondary)', fontSize: '12px' }}>{new Date(a.timestamp).toLocaleTimeString()}</td>
+                        </tr>
+                      )}
+                    </For>
+                  </tbody>
+                </table>
+              </div>
+            </Show>
+
+            {/* Embedded uReact DevTools */}
+            <DevTools />
+          </main>
+        </Show>
       </div>
     </Scoped>
   );

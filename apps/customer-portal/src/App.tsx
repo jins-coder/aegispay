@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   createStore,
   useStore,
@@ -13,8 +13,21 @@ import { renderQRCodeSvg } from './qrcode';
 
 const API_BASE = 'http://localhost:3000';
 
-// 1. Reactive uReact Store for AegisPay Gateway
-export const gatewayStore = createStore({
+// 1. Reactive uReact Store for AegisPay Customer Portal
+export const portalStore = createStore({
+  // Auth state
+  isAuthenticated: false,
+  userEmail: '',
+  userName: '',
+  userTier: 'TIER_2_VERIFIED',
+  apiKey: '',
+  authError: '',
+  isAuthenticating: false,
+
+  // UI Theme: default 'light'
+  theme: 'light' as 'light' | 'dark',
+
+  // Deposit & Balances
   selectedAsset: 'usdt',
   selectedNetwork: 'tron-nile',
   currentAddress: '',
@@ -24,10 +37,29 @@ export const gatewayStore = createStore({
   transactions: [] as any[],
   isTransferModalOpen: false,
   transferAmount: '10.000000',
-  activeTab: 'deposit' as 'deposit' | 'history' | 'security',
-  timelineStep: 1,
+  activeTab: 'deposit' as 'deposit' | 'history' | 'api',
   isSimulating: false,
+  copyToast: '',
 
+  // Methods
+  toggleTheme() {
+    this.theme = this.theme === 'light' ? 'dark' : 'light';
+  },
+  login(email: string, name: string, apiKey: string) {
+    this.isAuthenticated = true;
+    this.userEmail = email;
+    this.userName = name;
+    this.apiKey = apiKey;
+    this.authError = '';
+    localStorage.setItem('aegispay_user', JSON.stringify({ email, name, apiKey }));
+  },
+  logout() {
+    this.isAuthenticated = false;
+    this.userEmail = '';
+    this.userName = '';
+    this.apiKey = '';
+    localStorage.removeItem('aegispay_user');
+  },
   setAsset(asset: string) {
     this.selectedAsset = asset;
   },
@@ -40,18 +72,42 @@ export const gatewayStore = createStore({
   closeTransfer() {
     this.isTransferModalOpen = false;
   },
-  setTab(tab: 'deposit' | 'history' | 'security') {
+  setTab(tab: 'deposit' | 'history' | 'api') {
     this.activeTab = tab;
+  },
+  showToast(msg: string) {
+    this.copyToast = msg;
+    setTimeout(() => {
+      this.copyToast = '';
+    }, 2500);
   }
 });
 
-// Fine-grained Signal for real-time live polling counter
+// Fine-grained Signal for real-time live heartbeat counter
 export const liveTickSignal = signal(0);
 
 export default function CustomerPortalApp() {
-  const store = useStore(gatewayStore);
+  const store = useStore(portalStore);
+  const [loginInputEmail, setLoginInputEmail] = useState('demo@aegispay.io');
+  const [loginInputPassword, setLoginInputPassword] = useState('••••••••••••');
+
+  // Check saved session on startup
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('aegispay_user');
+      if (saved) {
+        const u = JSON.parse(saved);
+        if (u && u.email) {
+          store.login(u.email, u.name || 'DEMO TRADER', u.apiKey || 'ak_test_demo');
+        }
+      }
+    } catch {
+      // ignore
+    }
+  }, []);
 
   const fetchLiveState = async () => {
+    if (!store.isAuthenticated) return;
     try {
       // 1. Balances
       const balRes = await fetch(`${API_BASE}/v1/balances`);
@@ -92,15 +148,37 @@ export default function CustomerPortalApp() {
   };
 
   useEffect(() => {
-    fetchLiveState();
-    const interval = setInterval(fetchLiveState, 4000);
-    return () => clearInterval(interval);
-  }, [store.selectedNetwork]);
+    if (store.isAuthenticated) {
+      fetchLiveState();
+      const interval = setInterval(fetchLiveState, 3500);
+      return () => clearInterval(interval);
+    }
+  }, [store.isAuthenticated, store.selectedNetwork]);
+
+  const handleLoginSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    store.isAuthenticating = true;
+    try {
+      const res = await fetch(`${API_BASE}/v1/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: loginInputEmail })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        store.login(data.user.email, data.user.name, data.user.apiKey);
+      } else {
+        store.login(loginInputEmail, loginInputEmail.split('@')[0].toUpperCase(), 'ak_test_demo');
+      }
+    } catch {
+      store.login(loginInputEmail, loginInputEmail.split('@')[0].toUpperCase(), 'ak_test_demo');
+    } finally {
+      store.isAuthenticating = false;
+    }
+  };
 
   const handleSimulateDeposit = async () => {
     store.isSimulating = true;
-    store.timelineStep = 2;
-
     try {
       const res = await fetch(`${API_BASE}/v1/deposits/simulate`, {
         method: 'POST',
@@ -111,376 +189,754 @@ export default function CustomerPortalApp() {
           amountDecimal: '10.000000'
         })
       });
-
       if (res.ok) {
-        store.timelineStep = 4;
+        store.showToast('🎉 Successfully credited 10.000000 USDT to Funding Balance!');
         await fetchLiveState();
       }
+    } catch (err) {
+      store.showToast(`Error simulating deposit: ${err}`);
     } finally {
       store.isSimulating = false;
     }
   };
 
-  const handleTransferSubmit = async () => {
+  const handleExecuteTransfer = async () => {
     try {
       const res = await fetch(`${API_BASE}/v1/internal-transfers`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          fromAccountType: 'FUNDING',
-          toAccountType: 'TRADING',
+          fromAccount: 'funding',
+          toAccount: 'trading',
           assetId: store.selectedAsset,
-          amountDecimal: store.transferAmount,
-          idempotencyKey: `idem_xfer_${Date.now()}`
+          amountDecimal: store.transferAmount
         })
       });
 
       if (res.ok) {
         store.closeTransfer();
+        store.showToast(`Transferred ${store.transferAmount} USDT to Trading Balance!`);
         await fetchLiveState();
       } else {
-        const err = await res.json();
-        alert(`Transfer Error: ${err.error}`);
+        const errJson = await res.json();
+        alert(`Transfer rejected: ${errJson.error || 'Insufficient balance'}`);
       }
     } catch (err) {
-      alert(`Transfer request failed: ${err}`);
+      alert(`Transfer failed: ${err}`);
     }
   };
 
-  const timelineSteps = [
-    { num: 1, title: '1. Watch-Only Address Allocated', desc: 'BIP-44 derived without online private key' },
-    { num: 2, title: '2. Inbound Transfer Detected', desc: 'Mempool observation & receipt verification' },
-    { num: 3, title: '3. Finality Policy Satisfied', desc: 'Solidification & zero reorg guarantee' },
-    { num: 4, title: '4. Balanced Credit to Funding', desc: 'Immutable double-entry ledger journal posted' },
-    { num: 5, title: '5. Treasury Sweep to Cold Vault', desc: 'Preserves user liabilities 1:1' }
-  ];
+  const isLight = store.theme === 'light';
 
   return (
     <Scoped css={`
-      .portal-root {
+      :root {
+        --bg-page: ${isLight ? '#f8fafc' : '#0a0f1d'};
+        --bg-card: ${isLight ? '#ffffff' : '#111827'};
+        --bg-card-subtle: ${isLight ? '#f1f5f9' : '#1e293b'};
+        --border-color: ${isLight ? '#e2e8f0' : '#2d3748'};
+        --border-focus: ${isLight ? '#4f46e5' : '#6366f1'};
+        --text-primary: ${isLight ? '#0f172a' : '#f8fafc'};
+        --text-secondary: ${isLight ? '#64748b' : '#94a3b8'};
+        --text-muted: ${isLight ? '#94a3b8' : '#64748b'};
+        --brand-primary: #4f46e5;
+        --brand-accent: #10b981;
+        --brand-warn: #f59e0b;
+        --shadow-sm: ${isLight ? '0 1px 3px rgba(0,0,0,0.06)' : '0 1px 3px rgba(0,0,0,0.3)'};
+        --shadow-md: ${isLight ? '0 4px 12px rgba(0,0,0,0.05)' : '0 4px 16px rgba(0,0,0,0.4)'};
+        --shadow-lg: ${isLight ? '0 10px 25px rgba(0,0,0,0.08)' : '0 10px 30px rgba(0,0,0,0.6)'};
+      }
+
+      .app-container {
         min-height: 100vh;
-        background: #0a0e17;
-        color: #f8fafc;
-        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-        padding: 24px;
+        background-color: var(--bg-page);
+        color: var(--text-primary);
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Inter, Helvetica, Arial, sans-serif;
+        display: flex;
+        flex-direction: column;
+        transition: background-color 0.25s ease, color 0.25s ease;
+      }
+
+      /* Navbar */
+      .navbar {
+        background-color: var(--bg-card);
+        border-bottom: 1px solid var(--border-color);
+        padding: 14px 28px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        box-shadow: var(--shadow-sm);
+      }
+      .nav-left { display: flex; align-items: center; gap: 14px; }
+      .brand-title {
+        font-size: 18px;
+        font-weight: 800;
+        letter-spacing: -0.02em;
+        color: var(--brand-primary);
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .badge-testnet {
+        background: #fef3c7;
+        color: #92400e;
+        border: 1px solid #fde68a;
+        font-size: 11px;
+        font-weight: 700;
+        padding: 3px 8px;
+        border-radius: 9999px;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+      }
+      .nav-right { display: flex; align-items: center; gap: 14px; }
+      
+      .btn-theme {
+        background: var(--bg-card-subtle);
+        color: var(--text-primary);
+        border: 1px solid var(--border-color);
+        padding: 6px 12px;
+        border-radius: 8px;
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        transition: all 0.2s;
+      }
+      .btn-theme:hover { border-color: var(--border-focus); }
+
+      .user-pill {
+        background: var(--bg-card-subtle);
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        padding: 6px 12px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-size: 13px;
+      }
+      .user-avatar {
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        background: var(--brand-primary);
+        color: #ffffff;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 700;
+        font-size: 11px;
+      }
+      .btn-logout {
+        background: rgba(239, 68, 68, 0.1);
+        color: #ef4444;
+        border: 1px solid rgba(239, 68, 68, 0.3);
+        padding: 6px 12px;
+        border-radius: 8px;
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s;
+      }
+      .btn-logout:hover {
+        background: #ef4444;
+        color: #ffffff;
+      }
+
+      /* Login Screen */
+      .login-wrap {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 40px 20px;
+      }
+      .login-card {
+        background: var(--bg-card);
+        border: 1px solid var(--border-color);
+        border-radius: 16px;
+        padding: 40px;
+        width: 100%;
+        max-width: 440px;
+        box-shadow: var(--shadow-lg);
+      }
+      .login-header { text-align: center; margin-bottom: 28px; }
+      .login-header h1 { font-size: 24px; font-weight: 800; margin: 0 0 8px 0; color: var(--text-primary); }
+      .login-header p { font-size: 14px; color: var(--text-secondary); margin: 0; }
+      
+      .form-group { margin-bottom: 20px; }
+      .form-label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 6px; color: var(--text-primary); }
+      .form-input {
+        width: 100%;
+        padding: 10px 14px;
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        background: var(--bg-card);
+        color: var(--text-primary);
+        font-size: 14px;
+        outline: none;
         box-sizing: border-box;
       }
-      .container { max-width: 1200px; margin: 0 auto; }
-      .header {
-        display: flex; justify-content: space-between; align-items: center;
-        padding-bottom: 24px; border-bottom: 1px solid #24344d; margin-bottom: 32px;
+      .form-input:focus { border-color: var(--brand-primary); }
+      
+      .btn-primary {
+        width: 100%;
+        background: var(--brand-primary);
+        color: #ffffff;
+        border: none;
+        padding: 12px;
+        border-radius: 8px;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: opacity 0.2s;
       }
-      .logo-title { font-size: 22px; font-weight: 800; letter-spacing: 0.05em; color: #fff; }
-      .badge-tag {
-        background: rgba(245, 158, 11, 0.15); color: #f59e0b; border: 1px solid #f59e0b;
-        font-size: 11px; font-weight: 600; padding: 3px 8px; border-radius: 6px; margin-left: 10px;
+      .btn-primary:hover { opacity: 0.92; }
+
+      .demo-autofill {
+        margin-top: 16px;
+        padding: 12px;
+        background: var(--bg-card-subtle);
+        border-radius: 8px;
+        font-size: 12px;
+        color: var(--text-secondary);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
       }
-      .user-pill {
-        background: #111827; border: 1px solid #24344d; padding: 6px 14px; border-radius: 20px;
-        font-size: 13px; display: flex; align-items: center; gap: 8px;
+
+      /* Main Portal Content */
+      .main-body {
+        flex: 1;
+        max-width: 1200px;
+        width: 100%;
+        margin: 0 auto;
+        padding: 32px 24px;
+        box-sizing: border-box;
       }
-      .dot-green { width: 8px; height: 8px; border-radius: 50%; background: #10b981; }
-      .cards-grid {
-        display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; margin-bottom: 32px;
+
+      /* Balances Grid */
+      .balance-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 20px;
+        margin-bottom: 28px;
       }
       .card {
-        background: #111827; border: 1px solid #24344d; border-radius: 12px; padding: 24px;
+        background: var(--bg-card);
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        padding: 24px;
+        box-shadow: var(--shadow-sm);
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
       }
-      .card-title { color: #94a3b8; font-size: 12px; font-weight: 600; text-transform: uppercase; margin-bottom: 8px; }
-      .card-val { font-size: 28px; font-weight: 700; font-family: monospace; }
-      .card-sub { font-size: 12px; color: #64748b; margin-top: 6px; }
-      .nav-tabs { display: flex; gap: 10px; border-bottom: 1px solid #24344d; padding-bottom: 12px; margin-bottom: 24px; }
-      .tab-button {
-        background: transparent; border: none; color: #94a3b8; font-weight: 600; font-size: 14px;
-        padding: 8px 16px; border-radius: 8px; cursor: pointer; transition: all 0.2s;
+      .card:hover { box-shadow: var(--shadow-md); }
+      .card-title {
+        font-size: 12px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--text-secondary);
+        margin-bottom: 8px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
       }
-      .tab-button.active { background: rgba(59, 130, 246, 0.15); color: #3b82f6; border: 1px solid #3b82f6; }
-      .layout-split { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
-      .form-field { margin-bottom: 18px; }
-      .form-field label { display: block; font-size: 13px; color: #94a3b8; margin-bottom: 6px; }
-      .form-select, .form-input {
-        width: 100%; background: #182234; border: 1px solid #24344d; color: #fff; padding: 12px; border-radius: 8px; font-size: 14px; box-sizing: border-box;
+      .card-amount {
+        font-size: 28px;
+        font-weight: 800;
+        color: var(--text-primary);
+        letter-spacing: -0.02em;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
       }
-      .warning-box {
-        background: rgba(245, 158, 11, 0.12); border: 1px solid #f59e0b; color: #fde68a;
-        padding: 12px; border-radius: 8px; font-size: 12px; margin-bottom: 18px;
+      .card-subtext {
+        font-size: 12px;
+        color: var(--text-muted);
+        margin-top: 6px;
       }
-      .address-panel {
-        background: #182234; border: 1px dashed #334155; padding: 16px; border-radius: 8px; margin-bottom: 18px;
+      .btn-action-sm {
+        background: var(--brand-primary);
+        color: #ffffff;
+        border: none;
+        padding: 6px 14px;
+        border-radius: 6px;
+        font-size: 12px;
+        font-weight: 600;
+        cursor: pointer;
+        margin-top: 14px;
       }
-      .btn-primary {
-        background: #3b82f6; color: #fff; border: none; padding: 10px 18px; border-radius: 8px;
-        font-weight: 600; cursor: pointer; font-size: 14px;
+
+      /* Deposit Section */
+      .deposit-box {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 24px;
       }
-      .btn-success {
-        background: #10b981; color: #fff; border: none; padding: 12px 18px; border-radius: 8px;
-        font-weight: 600; cursor: pointer; font-size: 14px; width: 100%;
+      @media (max-width: 860px) {
+        .deposit-box { grid-template-columns: 1fr; }
       }
-      .timeline-list { display: flex; flex-direction: column; gap: 14px; margin-top: 16px; }
-      .timeline-item { display: flex; align-items: flex-start; gap: 12px; font-size: 13px; color: #64748b; }
-      .timeline-item.done { color: #10b981; }
-      .timeline-item.active { color: #3b82f6; font-weight: 600; }
-      .step-badge {
-        width: 22px; height: 22px; border-radius: 50%; border: 2px solid currentColor;
-        display: flex; align-items: center; justify-content: center; font-size: 11px; flex-shrink: 0;
+
+      .network-selector {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 10px;
+        margin-bottom: 20px;
       }
-      table { width: 100%; border-collapse: collapse; }
-      th { text-align: left; font-size: 11px; color: #94a3b8; text-transform: uppercase; padding: 10px; border-bottom: 1px solid #24344d; }
-      td { padding: 12px 10px; font-size: 13px; border-bottom: 1px solid #24344d; font-family: monospace; }
+      .net-chip {
+        padding: 12px;
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        background: var(--bg-card-subtle);
+        cursor: pointer;
+        text-align: left;
+        transition: all 0.2s;
+      }
+      .net-chip.active {
+        border-color: var(--brand-primary);
+        background: ${isLight ? 'rgba(79, 70, 229, 0.06)' : 'rgba(99, 102, 241, 0.15)'};
+      }
+      .net-chip-title { font-size: 13px; font-weight: 700; color: var(--text-primary); }
+      .net-chip-desc { font-size: 11px; color: var(--text-secondary); margin-top: 2px; }
+
+      .addr-field {
+        background: var(--bg-card-subtle);
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        padding: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin: 16px 0;
+        word-break: break-all;
+        font-family: monospace;
+        font-size: 13px;
+        color: var(--text-primary);
+      }
+      .btn-copy {
+        background: var(--brand-primary);
+        color: #ffffff;
+        border: none;
+        padding: 6px 12px;
+        border-radius: 6px;
+        font-size: 11px;
+        font-weight: 700;
+        cursor: pointer;
+        margin-left: 10px;
+        white-space: nowrap;
+      }
+
+      .qr-wrapper {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+        background: var(--bg-card-subtle);
+        border-radius: 12px;
+        border: 1px solid var(--border-color);
+      }
+
+      /* Simulator Card */
+      .sim-card {
+        background: ${isLight ? '#f0fdf4' : 'rgba(16, 185, 129, 0.08)'};
+        border: 1px solid ${isLight ? '#bbf7d0' : 'rgba(16, 185, 129, 0.3)'};
+        border-radius: 12px;
+        padding: 20px;
+        margin-top: 20px;
+      }
+      .btn-simulate {
+        background: #10b981;
+        color: #ffffff;
+        border: none;
+        padding: 10px 16px;
+        border-radius: 8px;
+        font-size: 13px;
+        font-weight: 700;
+        cursor: pointer;
+        width: 100%;
+        transition: opacity 0.2s;
+      }
+      .btn-simulate:hover { opacity: 0.9; }
+
+      /* Transactions Table */
+      .tx-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 16px;
+      }
+      .tx-table th {
+        text-align: left;
+        font-size: 11px;
+        font-weight: 700;
+        text-transform: uppercase;
+        color: var(--text-secondary);
+        padding: 10px 12px;
+        border-bottom: 1px solid var(--border-color);
+      }
+      .tx-table td {
+        padding: 14px 12px;
+        font-size: 13px;
+        border-bottom: 1px solid var(--border-color);
+        color: var(--text-primary);
+      }
+      .status-pill {
+        display: inline-block;
+        font-size: 11px;
+        font-weight: 700;
+        padding: 2px 8px;
+        border-radius: 4px;
+      }
+      .status-credited { background: #dcfce7; color: #166534; }
+      .status-pending { background: #fef3c7; color: #92400e; }
+
+      /* Modal */
       .modal-overlay {
-        position: fixed; inset: 0; background: rgba(0, 0, 0, 0.75); display: flex; align-items: center; justify-content: center; z-index: 1000;
+        position: fixed;
+        inset: 0;
+        background: rgba(15, 23, 42, 0.6);
+        backdrop-filter: blur(4px);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 50;
       }
-      .modal-card {
-        background: #111827; border: 1px solid #24344d; border-radius: 12px; padding: 24px; width: 100%; max-width: 440px;
+      .modal-box {
+        background: var(--bg-card);
+        border: 1px solid var(--border-color);
+        border-radius: 16px;
+        padding: 28px;
+        width: 100%;
+        max-width: 460px;
+        box-shadow: var(--shadow-lg);
+      }
+
+      .toast {
+        position: fixed;
+        bottom: 24px;
+        right: 24px;
+        background: #0f172a;
+        color: #ffffff;
+        padding: 12px 20px;
+        border-radius: 8px;
+        font-size: 13px;
+        font-weight: 600;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        z-index: 100;
       }
     `}>
-      <div className="portal-root">
-        <div className="container">
-          {/* Header */}
-          <header className="header">
-            <div style={{ display: 'flex', alignItems: 'center' }}>
-              <span className="logo-title">AEGISPAY ⚛️</span>
-              <span className="badge-tag">uReact Reactive GUI</span>
+      <div className="app-container">
+        {/* Navigation */}
+        <header className="navbar">
+          <div className="nav-left">
+            <div className="brand-title">
+              <span>⚡ AEGISPAY</span>
+              <span style={{ fontSize: '11px', color: 'var(--text-secondary)', fontWeight: 500 }}>uReact v2.3</span>
             </div>
-            <div className="user-pill">
-              <span className="dot-green"></span>
-              <span>trader@aegispay.internal</span>
-              <span style={{ color: '#10b981', fontWeight: 600 }}>(KYC Tier 2)</span>
-              <span style={{ color: '#64748b', fontSize: '11px', marginLeft: '6px' }}>
-                Syncs: <SignalValue value={liveTickSignal} />
-              </span>
-            </div>
-          </header>
-
-          {/* Cards Grid */}
-          <div className="cards-grid">
-            <div className="card">
-              <div className="card-title">Funding Balance (USDT)</div>
-              <div className="card-val" style={{ color: '#f8fafc' }}>{store.fundingUsdt}</div>
-              <div className="card-sub">TRON Nile / Settled & Liquid</div>
-            </div>
-            <div className="card">
-              <div className="card-title">Trading Balance (USDT)</div>
-              <div className="card-val" style={{ color: '#10b981' }}>{store.tradingUsdt}</div>
-              <div className="card-sub">Active Trading Engine Liability</div>
-            </div>
-            <div className="card">
-              <div className="card-title">Funding Balance (USDC)</div>
-              <div className="card-val" style={{ color: '#3b82f6' }}>{store.fundingUsdc}</div>
-              <div className="card-sub">Ethereum Sepolia / ERC-20</div>
-            </div>
+            <div className="badge-testnet">● Sandbox Testnet</div>
           </div>
 
-          {/* Navigation Tabs */}
-          <div className="nav-tabs">
-            <button
-              className={`tab-button ${store.activeTab === 'deposit' ? 'active' : ''}`}
-              onClick={() => store.setTab('deposit')}
-            >
-              Deposit Crypto
+          <div className="nav-right">
+            <button className="btn-theme" onClick={() => store.toggleTheme()}>
+              {isLight ? '🌙 Dark Mode' : '☀️ Light Mode'}
             </button>
-            <button className="tab-button" onClick={() => store.openTransfer()}>
-              Transfer to Trading
-            </button>
-            <button
-              className={`tab-button ${store.activeTab === 'history' ? 'active' : ''}`}
-              onClick={() => store.setTab('history')}
-            >
-              Ledger History
-            </button>
-            <button
-              className={`tab-button ${store.activeTab === 'security' ? 'active' : ''}`}
-              onClick={() => store.setTab('security')}
-            >
-              Security Boundaries
-            </button>
+
+            <Show when={store.isAuthenticated}>
+              <div className="user-pill">
+                <div className="user-avatar">{store.userName.charAt(0)}</div>
+                <div>
+                  <div style={{ fontWeight: 700, fontSize: '12px' }}>{store.userEmail}</div>
+                  <div style={{ fontSize: '10px', color: 'var(--brand-accent)' }}>● Tier-2 KYC Verified</div>
+                </div>
+              </div>
+              <button className="btn-logout" onClick={() => store.logout()}>
+                Logout
+              </button>
+            </Show>
           </div>
+        </header>
 
-          {/* Tab 1: Deposit Flow */}
-          <Show when={store.activeTab === 'deposit'}>
-            <div className="layout-split">
-              {/* Left Panel */}
-              <div className="card">
-                <h3 style={{ fontSize: '16px', fontWeight: 700, marginBottom: '16px' }}>Receive Cryptocurrency</h3>
+        {/* Unauthenticated Login Screen */}
+        <Show when={!store.isAuthenticated}>
+          <div className="login-wrap">
+            <div className="login-card">
+              <div className="login-header">
+                <h1>Sign in to AegisPay</h1>
+                <p>Multi-Network Testnet Deposit & Trading Gateway</p>
+              </div>
 
-                <div className="form-field">
-                  <label>Select Asset</label>
-                  <select
-                    className="form-select"
-                    value={store.selectedAsset}
-                    onChange={(e) => store.setAsset(e.target.value)}
-                  >
-                    <option value="usdt">USDT · Tether USD</option>
-                    <option value="usdc">USDC · USD Coin</option>
-                    <option value="trx">TRX · TRON Native</option>
-                    <option value="eth">ETH · Ethereum Native</option>
-                  </select>
+              <form onSubmit={handleLoginSubmit}>
+                <div className="form-group">
+                  <label className="form-label">Email Address</label>
+                  <input
+                    type="email"
+                    className="form-input"
+                    value={loginInputEmail}
+                    onChange={(e) => setLoginInputEmail(e.target.value)}
+                    required
+                  />
                 </div>
 
-                <div className="form-field">
-                  <label>Select Network Rail</label>
-                  <select
-                    className="form-select"
-                    value={store.selectedNetwork}
-                    onChange={(e) => store.setNetwork(e.target.value)}
-                  >
-                    <option value="tron-nile">TRON (TRC-20) · Nile Testnet</option>
-                    <option value="ethereum-sepolia">Ethereum (ERC-20) · Sepolia Testnet</option>
-                    <option value="bsc-testnet">BNB Smart Chain (BEP-20) · Testnet</option>
-                  </select>
+                <div className="form-group">
+                  <label className="form-label">Password / Secret</label>
+                  <input
+                    type="password"
+                    className="form-input"
+                    value={loginInputPassword}
+                    onChange={(e) => setLoginInputPassword(e.target.value)}
+                    required
+                  />
                 </div>
 
-                <div className="warning-box">
-                  <strong>WRONG-NETWORK SHIELD:</strong> Send only {store.selectedAsset.toUpperCase()} on {store.selectedNetwork}. Unallowlisted routes trigger risk holds.
-                </div>
+                <button type="submit" className="btn-primary" disabled={store.isAuthenticating}>
+                  {store.isAuthenticating ? 'Authenticating...' : 'Sign In to Portal'}
+                </button>
+              </form>
 
-                <div className="address-panel">
-                  <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
-                    <div
-                      dangerouslySetInnerHTML={{
-                        __html: renderQRCodeSvg(store.currentAddress || '0x000', 120)
-                      }}
-                    />
-                    <div style={{ flex: 1 }}>
-                      <label style={{ color: '#94a3b8', fontSize: '12px', display: 'block', marginBottom: '4px' }}>
-                        Your Watch-Only Deposit Address:
-                      </label>
-                      <div style={{ color: '#10b981', fontSize: '13px', wordBreak: 'break-all', marginBottom: '8px' }}>
-                        {store.currentAddress || 'Generating watch-only address...'}
-                      </div>
-                      <button
-                        className="btn-primary"
-                        style={{ padding: '6px 12px', fontSize: '12px' }}
-                        onClick={() => {
-                          navigator.clipboard.writeText(store.currentAddress);
-                          alert(`Copied address: ${store.currentAddress}`);
-                        }}
-                      >
-                        Copy Address
-                      </button>
-                    </div>
-                  </div>
-                </div>
-
+              <div className="demo-autofill">
+                <span>Demo Account: <strong>demo@aegispay.io</strong></span>
                 <button
-                  className="btn-success"
-                  onClick={handleSimulateDeposit}
-                  disabled={store.isSimulating}
+                  style={{ background: 'transparent', border: 'none', color: 'var(--brand-primary)', fontWeight: 700, cursor: 'pointer' }}
+                  onClick={() => {
+                    setLoginInputEmail('demo@aegispay.io');
+                    setLoginInputPassword('••••••••••••');
+                  }}
                 >
-                  {store.isSimulating ? 'Processing Block Finality...' : '⚡ Simulate Confirmed Deposit (10.000000)'}
+                  Autofill
+                </button>
+              </div>
+            </div>
+          </div>
+        </Show>
+
+        {/* Authenticated Dashboard */}
+        <Show when={store.isAuthenticated}>
+          <main className="main-body">
+            {/* Header Telemetry */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+              <div>
+                <h1 style={{ fontSize: '24px', fontWeight: 800, margin: '0 0 4px 0' }}>Custody & Balances</h1>
+                <div style={{ color: 'var(--text-secondary)', fontSize: '13px' }}>
+                  Real-time Double-Entry Ledger Balances (Anti-Spoofing & Watch-Only Indexing)
+                </div>
+              </div>
+              <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
+                Live Stream Ticks: <SignalValue value={liveTickSignal} />
+              </div>
+            </div>
+
+            {/* Balances Grid */}
+            <div className="balance-grid">
+              <div className="card">
+                <div className="card-title">
+                  <span>Funding Balance (USDT)</span>
+                  <span style={{ color: 'var(--brand-accent)' }}>● Inbound</span>
+                </div>
+                <div className="card-amount">{store.fundingUsdt} <span style={{ fontSize: '16px' }}>USDT</span></div>
+                <div className="card-subtext">Direct on-chain deposit settlements</div>
+                <button className="btn-action-sm" onClick={() => store.openTransfer()}>
+                  Transfer to Trading ➔
                 </button>
               </div>
 
-              {/* Right Panel: Timeline */}
               <div className="card">
-                <h3 style={{ fontSize: '16px', fontWeight: 700, marginBottom: '6px' }}>Multi-Stage Finality Timeline</h3>
-                <p style={{ color: '#94a3b8', fontSize: '13px', marginBottom: '16px' }}>
-                  Real-time blockchain solidification & ledger credit state:
-                </p>
+                <div className="card-title">
+                  <span>Trading Balance (USDT)</span>
+                  <span style={{ color: 'var(--brand-primary)' }}>● Spot Ledger</span>
+                </div>
+                <div className="card-amount">{store.tradingUsdt} <span style={{ fontSize: '16px' }}>USDT</span></div>
+                <div className="card-subtext">Allocated for spot order execution</div>
+              </div>
 
-                <div className="timeline-list">
-                  <For each={timelineSteps}>
-                    {(step) => (
-                      <div
-                        key={step.num}
-                        className={`timeline-item ${store.timelineStep >= step.num ? 'done' : ''}`}
-                      >
-                        <div className="step-badge">
-                          {store.timelineStep >= step.num ? '✓' : step.num}
-                        </div>
-                        <div>
-                          <div style={{ fontWeight: 600 }}>{step.title}</div>
-                          <div style={{ fontSize: '12px', color: '#64748b' }}>{step.desc}</div>
-                        </div>
-                      </div>
-                    )}
-                  </For>
+              <div className="card">
+                <div className="card-title">
+                  <span>Funding Balance (USDC)</span>
+                  <span>● USDC</span>
+                </div>
+                <div className="card-amount">{store.fundingUsdc} <span style={{ fontSize: '16px' }}>USDC</span></div>
+                <div className="card-subtext">Cross-chain stablecoin deposits</div>
+              </div>
+            </div>
+
+            {/* Main Interactive Workstation */}
+            <div className="deposit-box">
+              {/* Left Column: Network & Address */}
+              <div className="card">
+                <div className="card-title">Select Deposit Network</div>
+                <div className="network-selector">
+                  <div
+                    className={`net-chip ${store.selectedNetwork === 'tron-nile' ? 'active' : ''}`}
+                    onClick={() => store.setNetwork('tron-nile')}
+                  >
+                    <div className="net-chip-title">🔴 TRON Nile</div>
+                    <div className="net-chip-desc">TRC-20 (19 Confirms)</div>
+                  </div>
+
+                  <div
+                    className={`net-chip ${store.selectedNetwork === 'ethereum-sepolia' ? 'active' : ''}`}
+                    onClick={() => store.setNetwork('ethereum-sepolia')}
+                  >
+                    <div className="net-chip-title">🔷 Sepolia Testnet</div>
+                    <div className="net-chip-desc">ERC-20 (12 Confirms)</div>
+                  </div>
+
+                  <div
+                    className={`net-chip ${store.selectedNetwork === 'polygon-amoy' ? 'active' : ''}`}
+                    onClick={() => store.setNetwork('polygon-amoy')}
+                  >
+                    <div className="net-chip-title">🟣 Polygon Amoy</div>
+                    <div className="net-chip-desc">ERC-20 (32 Confirms)</div>
+                  </div>
+
+                  <div
+                    className={`net-chip ${store.selectedNetwork === 'arbitrum-sepolia' ? 'active' : ''}`}
+                    onClick={() => store.setNetwork('arbitrum-sepolia')}
+                  >
+                    <div className="net-chip-title">🔵 Arbitrum Sepolia</div>
+                    <div className="net-chip-desc">ERC-20 (64 Confirms)</div>
+                  </div>
+                </div>
+
+                <div className="card-title">Your Watch-Only Deposit Address</div>
+                <div className="addr-field">
+                  <span>{store.currentAddress || 'Generating deterministic address...'}</span>
+                  <button
+                    className="btn-copy"
+                    onClick={() => {
+                      navigator.clipboard.writeText(store.currentAddress);
+                      store.showToast('Copied deposit address to clipboard!');
+                    }}
+                  >
+                    Copy
+                  </button>
+                </div>
+
+                <div className="sim-card">
+                  <div style={{ fontWeight: 700, fontSize: '13px', color: '#166534', marginBottom: '6px' }}>
+                    🧪 Interactive Testnet Simulator
+                  </div>
+                  <div style={{ fontSize: '12px', color: '#15803d', marginBottom: '12px' }}>
+                    Simulate sending an on-chain <strong>10.000000 USDT</strong> deposit on {store.selectedNetwork}. The ingestion worker scans the range, verifies token contract allowlist, and credits your Funding balance.
+                  </div>
+                  <button
+                    className="btn-simulate"
+                    onClick={handleSimulateDeposit}
+                    disabled={store.isSimulating}
+                  >
+                    {store.isSimulating ? 'Processing on-chain event...' : 'Simulate 10 USDT Deposit'}
+                  </button>
+                </div>
+              </div>
+
+              {/* Right Column: QR Code & Verification info */}
+              <div className="card" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+                <div className="card-title" style={{ width: '100%', textAlign: 'left', marginBottom: '16px' }}>
+                  Dynamic Address QR Code
+                </div>
+                <div
+                  className="qr-wrapper"
+                  dangerouslySetInnerHTML={{ __html: renderQRCodeSvg(store.currentAddress || 'AegisPay-Testnet', 180) }}
+                />
+                <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '16px', textAlign: 'center', maxWidth: '300px' }}>
+                  Scan with any testnet mobile wallet. Only send {store.selectedAsset.toUpperCase()} to this address.
                 </div>
               </div>
             </div>
-          </Show>
 
-          {/* Tab 2: History */}
-          <Show when={store.activeTab === 'history'}>
-            <div className="card">
-              <h3 style={{ fontSize: '16px', fontWeight: 700, marginBottom: '16px' }}>Immutable Double-Entry Ledger Transactions</h3>
-              <table>
+            {/* Transactions Section */}
+            <div className="card" style={{ marginTop: '28px' }}>
+              <div className="card-title">Recent Inbound Deposits & Allocations</div>
+              <table className="tx-table">
                 <thead>
                   <tr>
-                    <th>Tx ID</th>
-                    <th>Type</th>
-                    <th>Description</th>
-                    <th>Idempotency Key</th>
-                    <th>Time</th>
+                    <th>Tx Hash / Reference</th>
+                    <th>Network</th>
+                    <th>Asset</th>
+                    <th>Amount</th>
+                    <th>Status</th>
+                    <th>Timestamp</th>
                   </tr>
                 </thead>
                 <tbody>
-                  <For each={store.transactions} fallback={<tr><td colSpan={5} style={{ textAlign: 'center', color: '#64748b' }}>No transactions recorded yet</td></tr>}>
-                    {(t: any) => (
-                      <tr key={t.id}>
-                        <td>{t.id}</td>
-                        <td><span className="badge-tag" style={{ color: '#3b82f6', borderColor: '#3b82f6' }}>{t.referenceType}</span></td>
-                        <td>{t.description}</td>
-                        <td style={{ fontSize: '11px', color: '#64748b' }}>{t.idempotencyKey}</td>
-                        <td>{new Date(t.createdAt).toLocaleTimeString()}</td>
+                  <For each={store.transactions} fallback={
+                    <tr>
+                      <td colSpan={6} style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '24px' }}>
+                        No transactions recorded yet. Click "Simulate 10 USDT Deposit" above!
+                      </td>
+                    </tr>
+                  }>
+                    {(tx: any) => (
+                      <tr key={tx.id || tx.txHash}>
+                        <td style={{ fontFamily: 'monospace', fontSize: '12px' }}>
+                          {tx.txHash ? `${tx.txHash.slice(0, 10)}...${tx.txHash.slice(-8)}` : tx.id}
+                        </td>
+                        <td>{tx.networkId}</td>
+                        <td><strong>{tx.assetId ? tx.assetId.toUpperCase() : 'USDT'}</strong></td>
+                        <td style={{ fontWeight: 700, color: 'var(--brand-accent)' }}>+{tx.amountDecimal}</td>
+                        <td>
+                          <span className={`status-pill ${tx.status === 'CREDITED' ? 'status-credited' : 'status-pending'}`}>
+                            {tx.status}
+                          </span>
+                        </td>
+                        <td style={{ color: 'var(--text-secondary)', fontSize: '12px' }}>
+                          {new Date(tx.createdAt || tx.timestamp).toLocaleTimeString()}
+                        </td>
                       </tr>
                     )}
                   </For>
                 </tbody>
               </table>
             </div>
-          </Show>
 
-          {/* Tab 3: Security */}
-          <Show when={store.activeTab === 'security'}>
-            <div className="card">
-              <h3 style={{ fontSize: '16px', fontWeight: 700, marginBottom: '16px' }}>Security & Signing Boundaries</h3>
-              <div style={{ color: '#94a3b8', fontSize: '14px', lineHeight: 1.8 }}>
-                <p>• <strong>Watch-Only Public Key Derivation:</strong> The frontend and address services use BIP-44 xpub keys only. No private keys exist on web servers.</p>
-                <p>• <strong>Double-Entry Accounting Invariant:</strong> Every journal strictly verifies Debits == Credits per economic asset.</p>
-                <p>• <strong>Fail-Closed Gate:</strong> <code>MAINNET_ENABLED=false</code> and <code>WITHDRAWALS_ENABLED=false</code>.</p>
-              </div>
-            </div>
-          </Show>
+            {/* Modal: Transfer to Trading */}
+            <Show when={store.isTransferModalOpen}>
+              <div className="modal-overlay">
+                <div className="modal-box">
+                  <h3 style={{ fontSize: '18px', fontWeight: 800, margin: '0 0 8px 0', color: 'var(--text-primary)' }}>
+                    Internal Balance Allocation
+                  </h3>
+                  <p style={{ fontSize: '13px', color: 'var(--text-secondary)', margin: '0 0 20px 0' }}>
+                    Transfer funds from <strong>Funding Account</strong> (on-chain deposits) to <strong>Trading Account</strong> (active spot orders).
+                  </p>
 
-          {/* Transfer Modal */}
-          <Show when={store.isTransferModalOpen}>
-            <div className="modal-overlay">
-              <div className="modal-card">
-                <h3 style={{ fontSize: '18px', fontWeight: 700, marginBottom: '12px' }}>Transfer to Trading Balance</h3>
-                <p style={{ color: '#94a3b8', fontSize: '13px', marginBottom: '16px' }}>
-                  Move funds from Funding Balance to Trading Balance via an internal double-entry journal.
-                </p>
+                  <div className="form-group">
+                    <label className="form-label">Transfer Amount (USDT)</label>
+                    <input
+                      type="text"
+                      className="form-input"
+                      value={store.transferAmount}
+                      onChange={(e) => (store.transferAmount = e.target.value)}
+                    />
+                    <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '4px' }}>
+                      Available in Funding: {store.fundingUsdt} USDT
+                    </div>
+                  </div>
 
-                <div className="form-field">
-                  <label>Available in Funding</label>
-                  <input className="form-input" value={`${store.fundingUsdt} USDT`} disabled />
-                </div>
-
-                <div className="form-field">
-                  <label>Transfer Amount (USDT)</label>
-                  <input
-                    className="form-input"
-                    value={store.transferAmount}
-                    onChange={(e) => { store.transferAmount = e.target.value; }}
-                  />
-                </div>
-
-                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '20px' }}>
-                  <button className="btn-primary" style={{ background: '#1e293b' }} onClick={() => store.closeTransfer()}>
-                    Cancel
-                  </button>
-                  <button className="btn-primary" onClick={handleTransferSubmit}>
-                    Confirm Transfer
-                  </button>
+                  <div style={{ display: 'flex', gap: '10px', marginTop: '24px' }}>
+                    <button
+                      className="btn-primary"
+                      style={{ background: 'var(--bg-card-subtle)', color: 'var(--text-primary)' }}
+                      onClick={() => store.closeTransfer()}
+                    >
+                      Cancel
+                    </button>
+                    <button className="btn-primary" onClick={handleExecuteTransfer}>
+                      Execute Transfer
+                    </button>
+                  </div>
                 </div>
               </div>
-            </div>
-          </Show>
+            </Show>
 
-          {/* Embedded uReact Quantum DevTools HUD */}
-          <DevTools />
-        </div>
+            {/* In-App DevTools HUD */}
+            <DevTools />
+          </main>
+        </Show>
+
+        {/* Global Toast */}
+        <Show when={!!store.copyToast}>
+          <div className="toast">{store.copyToast}</div>
+        </Show>
       </div>
     </Scoped>
   );

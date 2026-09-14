@@ -89,7 +89,37 @@ export function createPublicApiServer(options?: {
         });
       }
 
-      // 1. GET /v1/account
+      // 1. POST /v1/auth/login
+      if (req.method === 'POST' && url.pathname === '/v1/auth/login') {
+        const body = await readBody();
+        const email = body.email || 'demo@aegispay.io';
+        const user = {
+          id: userId || 'usr_demo_01',
+          email,
+          name: email.split('@')[0].toUpperCase(),
+          kycLevel: 'TIER_2_VERIFIED',
+          sanctionsStatus: 'CLEARED',
+          apiKey: `ak_live_${Math.random().toString(36).slice(2, 12)}`
+        };
+        return sendJson(200, {
+          token: `jwt_testnet_${Buffer.from(JSON.stringify(user)).toString('base64')}`,
+          user
+        });
+      }
+
+      // 1b. GET /v1/auth/me
+      if (req.method === 'GET' && url.pathname === '/v1/auth/me') {
+        const user = users.get(userId) || {
+          id: userId,
+          email: `${userId}@aegispay.internal`,
+          name: 'DEMO TRADER',
+          kycLevel: 'TIER_2_VERIFIED',
+          sanctionsStatus: 'CLEARED'
+        };
+        return sendJson(200, user);
+      }
+
+      // 1c. GET /v1/account
       if (req.method === 'GET' && url.pathname === '/v1/account') {
         const user = users.get(userId) || {
           id: userId,

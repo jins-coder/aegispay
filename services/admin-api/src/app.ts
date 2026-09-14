@@ -72,7 +72,25 @@ export function createAdminApiServer(options?: { ledger?: LedgerEngine }) {
         });
       }
 
-      // 1. GET /v1/admin/overview
+      // 1. POST /v1/admin/auth/login
+      if (req.method === 'POST' && url.pathname === '/v1/admin/auth/login') {
+        const body = await readBody();
+        const email = body.email || 'admin@aegispay.internal';
+        const adminUser = {
+          id: 'admin_sec_01',
+          email,
+          name: 'Security Ops Admin',
+          role: 'SECURITY_OFFICER',
+          clearance: 'LEVEL_4_TREASURY'
+        };
+        addAudit('ADMIN_LOGIN', 'SESSION', 'admin_sec_01', 'admin_sec_01');
+        return sendJson(200, {
+          token: `jwt_admin_${Buffer.from(JSON.stringify(adminUser)).toString('base64')}`,
+          user: adminUser
+        });
+      }
+
+      // 1b. GET /v1/admin/overview
       if (req.method === 'GET' && url.pathname === '/v1/admin/overview') {
         return sendJson(200, {
           totalUsers: 1420,
