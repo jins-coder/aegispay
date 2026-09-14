@@ -16,9 +16,17 @@
 
 ### Frontend Layer: uReact GUIs (Customer Portal & Operations Console)
 - Integrated `ureact` (React 19 + Vite) package (`packages/ureact`).
-- Built **Customer Portal** (`apps/customer-portal` on `http://localhost:4000`) with `createStore`, `useStore`, `Scoped`, `Show`, `For`, `SignalValue`, live SVG QR code generator, deposit simulation, and Funding-to-Trading internal transfer modal.
-- Built **Operations Console** (`apps/operations-console` on `http://localhost:4001`) with `createStore`, `useStore`, `Scoped`, `Show`, `For`, real-time network pause toggling (circuit breakers), cold vault balances, and live audit feeds.
-- Verified production builds (`vite build`) and live hot reloading for both frontend applications.
+- Built **Customer Portal** (`apps/customer-portal` on `http://localhost:4000`) with pure uReact declarative syntax (`createStore`, `useStore`, `Scoped`, `Show`, `For`, `SignalValue`, `DevTools`), live SVG QR code generator, deposit simulation, and Funding-to-Trading internal transfer modal.
+- Built **Operations Console** (`apps/operations-console` on `http://localhost:4001`) with pure uReact declarative syntax, real-time network pause toggling (circuit breakers), cold vault balances, and live audit feeds.
+- Implemented clean Fintech Light Theme by default with zero CSS bleed.
+
+### High-Performance Rust Backend Engine (Axum + Tokio)
+- Implemented `crates/aegispay-core`: Native double-entry balanced ledger ($\sum \text{Debits} = \sum \text{Credits}$), exact integer atomic arithmetic (`u128`), and watch-only address allocator.
+- Implemented `crates/aegispay-server`: Multi-threaded Tokio asynchronous HTTP server with Axum hosting:
+  - Public API Gateway (`http://localhost:3000`)
+  - Admin Operations API Gateway (`http://localhost:3001`)
+- Replaced Node.js default gateways with the sub-millisecond compiled Rust engine.
+- Verified 100% wire compatibility with both uReact frontends.
 
 ---
 

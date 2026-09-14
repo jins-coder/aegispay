@@ -7,17 +7,17 @@ const __dirname = path.dirname(__filename);
 const rootDir = path.resolve(__dirname, '..');
 
 console.log('=================================================================');
-console.log('         🚀 LAUNCHING AEGISPAY FULL-STACK (uReact + Node.js)     ');
+console.log('    🚀 LAUNCHING AEGISPAY HIGH-PERFORMANCE (Rust + uReact)      ');
 console.log('=================================================================');
-console.log('• Public API:          http://localhost:3000');
-console.log('• Admin API:           http://localhost:3001');
-console.log('• Customer Portal UI:  http://localhost:4000  (uReact + React 19)');
-console.log('• Operations Console:  http://localhost:4001  (uReact + React 19)');
+console.log('• Unified Backend:     Rust 1.98 / Axum / Tokio Multi-Threaded');
+console.log('  - Public API:        http://localhost:3000');
+console.log('  - Admin API:         http://localhost:3001');
+console.log('• Customer Portal UI:  http://localhost:4000  (Pure uReact + Light Theme)');
+console.log('• Operations Console:  http://localhost:4001  (Pure uReact + Light Theme)');
 console.log('=================================================================\n');
 
 const services = [
-  { name: 'Public API', cmd: 'node', args: ['services/public-api/dist/index.js'], cwd: rootDir, env: { PORT: '3000' } },
-  { name: 'Admin API', cmd: 'node', args: ['services/admin-api/dist/index.js'], cwd: rootDir, env: { ADMIN_PORT: '3001' } },
+  { name: 'Rust Backend (Axum + Tokio)', cmd: 'cargo', args: ['run', '-p', 'aegispay-server'], cwd: rootDir, env: {} },
   { name: 'Customer Portal (uReact)', cmd: 'npx', args: ['vite', '--port', '4000', '--host'], cwd: path.resolve(rootDir, 'apps/customer-portal'), env: {} },
   { name: 'Operations Console (uReact)', cmd: 'npx', args: ['vite', '--port', '4001', '--host'], cwd: path.resolve(rootDir, 'apps/operations-console'), env: {} }
 ];
