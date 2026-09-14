@@ -10,7 +10,7 @@ import {
   DevTools
 } from 'ureact';
 
-const ADMIN_API = 'http://localhost:3001';
+const ADMIN_API = typeof window !== 'undefined' && window.location.port === '4001' ? 'http://localhost:3001' : '';
 
 // 1. Pure uReact Reactive Store for Operations Console (Zero React useState)
 export const opsStore = createStore({

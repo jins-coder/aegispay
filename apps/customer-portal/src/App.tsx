@@ -11,7 +11,7 @@ import {
 } from 'ureact';
 import { renderQRCodeSvg } from './qrcode';
 
-const API_BASE = 'http://localhost:3000';
+const API_BASE = typeof window !== 'undefined' && window.location.port === '4000' ? 'http://localhost:3000' : '';
 
 // 1. Pure uReact Reactive Store with Direct State Mutations & Lifecycle Actions
 export const portalStore = createStore({

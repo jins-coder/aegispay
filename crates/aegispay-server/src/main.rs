@@ -3,17 +3,87 @@ use aegispay_core::{
     EntryDirection, JournalEntry, LedgerEngine, NetworkManifest, TransactionJournal, UserBalance,
 };
 use axum::{
+    body::Body,
     extract::{Path, State},
-    http::StatusCode,
+    http::{header, HeaderValue, Response, StatusCode, Uri},
     response::IntoResponse,
     routing::{get, post},
     Json, Router,
 };
+use rust_embed::RustEmbed;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
 use tower_http::cors::{Any, CorsLayer};
 use tracing::info;
+
+#[derive(RustEmbed)]
+#[folder = "../../apps/customer-portal/dist/"]
+struct CustomerPortalAssets;
+
+#[derive(RustEmbed)]
+#[folder = "../../apps/operations-console/dist/"]
+struct OpsConsoleAssets;
+
+async fn static_portal_handler(uri: Uri) -> impl IntoResponse {
+    let mut path = uri.path().trim_start_matches('/').to_string();
+    if path.is_empty() {
+        path = "index.html".to_string();
+    }
+
+    match CustomerPortalAssets::get(&path) {
+        Some(content) => {
+            let mime = mime_guess::from_path(&path).first_or_octet_stream();
+            Response::builder()
+                .header(header::CONTENT_TYPE, HeaderValue::from_str(mime.as_ref()).unwrap())
+                .body(Body::from(content.data))
+                .unwrap()
+        }
+        None => {
+            if let Some(index) = CustomerPortalAssets::get("index.html") {
+                Response::builder()
+                    .header(header::CONTENT_TYPE, HeaderValue::from_static("text/html"))
+                    .body(Body::from(index.data))
+                    .unwrap()
+            } else {
+                Response::builder()
+                    .status(StatusCode::NOT_FOUND)
+                    .body(Body::from("Customer Portal not built. Run npm run build first."))
+                    .unwrap()
+            }
+        }
+    }
+}
+
+async fn static_ops_handler(uri: Uri) -> impl IntoResponse {
+    let mut path = uri.path().trim_start_matches('/').to_string();
+    if path.is_empty() {
+        path = "index.html".to_string();
+    }
+
+    match OpsConsoleAssets::get(&path) {
+        Some(content) => {
+            let mime = mime_guess::from_path(&path).first_or_octet_stream();
+            Response::builder()
+                .header(header::CONTENT_TYPE, HeaderValue::from_str(mime.as_ref()).unwrap())
+                .body(Body::from(content.data))
+                .unwrap()
+        }
+        None => {
+            if let Some(index) = OpsConsoleAssets::get("index.html") {
+                Response::builder()
+                    .header(header::CONTENT_TYPE, HeaderValue::from_static("text/html"))
+                    .body(Body::from(index.data))
+                    .unwrap()
+            } else {
+                Response::builder()
+                    .status(StatusCode::NOT_FOUND)
+                    .body(Body::from("Operations Console not built. Run npm run build first."))
+                    .unwrap()
+            }
+        }
+    }
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -460,8 +530,8 @@ async fn main() {
 
     // 1. Build Public API Router (Port 3000)
     let public_app = Router::new()
-        .route("/", get(public_root))
         .route("/health", get(public_root))
+        .route("/api", get(public_root))
         .route("/v1/auth/login", post(public_login))
         .route("/v1/auth/me", get(public_get_account))
         .route("/v1/account", get(public_get_account))
@@ -471,19 +541,21 @@ async fn main() {
         .route("/v1/deposits/simulate", post(public_simulate_deposit))
         .route("/v1/internal-transfers", post(public_internal_transfer))
         .route("/v1/transactions", get(public_get_transactions))
+        .fallback(static_portal_handler)
         .layer(cors.clone())
         .with_state(state.clone());
 
     // 2. Build Admin API Router (Port 3001)
     let admin_app = Router::new()
-        .route("/", get(admin_root))
         .route("/health", get(admin_root))
+        .route("/api", get(admin_root))
         .route("/v1/admin/auth/login", post(admin_login))
         .route("/v1/admin/overview", get(admin_get_overview))
         .route("/v1/admin/networks", get(admin_get_networks))
         .route("/v1/admin/networks/:id/pause", post(admin_toggle_pause_network))
         .route("/v1/admin/treasury", get(admin_get_treasury))
         .route("/v1/admin/audit-events", get(admin_get_audit_events))
+        .fallback(static_ops_handler)
         .layer(cors)
         .with_state(state.clone());
 

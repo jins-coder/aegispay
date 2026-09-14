@@ -9,11 +9,8 @@
   },
   "scripts": {
     "dev": "node scripts/start-all.js",
-    "start": "node scripts/start-all.js",
-    "build": "pnpm -r run build",
-    "test": "pnpm -r run test",
-    "lint": "pnpm -r run lint",
-    "typecheck": "pnpm -r run typecheck"
+    "build": "node scripts/build-all.js",
+    "start": "node scripts/start-standalone.js"
   },
   "devDependencies": {
     "typescript": "^5.4.5",
