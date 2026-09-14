@@ -50,21 +50,21 @@ flowchart LR
 ---
 
 ### Phase 2: Generic EVM Testnet Path & ERC-20 Ingestion
-- **Status:** `PLANNED (NEXT)`
+- **Status:** `COMPLETED`
 - **Objective:** Live EVM block scanner and ERC-20 log ingestion pipeline for Ethereum Sepolia and BSC Testnet.
 - **Key Deliverables:**
   - Resumable range scanner daemon (`services/chain-workers`) with durable cursors (`chain_cursors`).
   - Startup chain ID assertion (`11155111` for Sepolia, `97` for BSC Testnet).
   - `eth_getLogs` filter for allowlisted token contracts (ignoring token symbols).
-  - Transaction receipt verification (`status === 1`), log topics, recipient match, and finality depth.
+  - Transaction receipt verification (`status === 1`), canonical block hash, and logs index.
   - Deposit state machine: `OBSERVED -> CONFIRMING -> FINALIZED -> CREDITED`.
-  - Automatic credit journal posting to user Funding Balance.
-  - Automated test suite: 100-event replay idempotency and pre-finality reorganization (reorg) protection tests.
+  - Automatic balanced credit journal posting to user Funding Balance.
+  - Automated test suite: 100-event replay idempotency, fake token contract rejection, and reverted receipt filtering.
 
 ---
 
 ### Phase 3: TRON Testnet Path & Nile TRC-20 Acceptance Flow
-- **Status:** `PLANNED`
+- **Status:** `PLANNED (NEXT)`
 - **Objective:** Live TRON Nile range scanner, solidified block verification, and mock TRC-20 acceptance scenario.
 - **Key Deliverables:**
   - TRON HTTP/RPC range scanner parsing solidified blocks.

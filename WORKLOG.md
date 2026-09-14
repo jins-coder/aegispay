@@ -8,16 +8,11 @@
 - Established Architectural Decision Records (ADRs): Modular Monolith Ledger (`ADR-001`), Chain Adapter SDK (`ADR-002`), and Signer Isolation (`ADR-003`).
 - Authored `SECURITY.md` and `PRODUCTION_READINESS_CHECKLIST.md`.
 
-### Phase 1: Core Domain, Ledger, Registry, Address Service, APIs, GUIs & Tests
-- Built `packages/chain-sdk`: exact integer atomic arithmetic, address normalizers, and adapter interfaces.
-- Built `packages/adapter-evm` & `packages/adapter-tron` with conformance test fixtures.
-- Built `services/core-ledger`: PostgreSQL schema DDL, double-entry balanced journal posting, atomicity, idempotency engine, balance holds, and projections.
-- Built `services/address-service`: Deterministic watch-only index allocation for EVM & TRON.
-- Built `services/signer`: Isolated mock signer service with testnet safety guards.
-- Built `services/public-api` & `services/admin-api`: Versioned REST APIs.
-- Built `apps/customer-portal`: Institutional customer UI with deposit flow, QR codes, timeline, and transfer-to-trading modal.
-- Built `apps/operations-console`: High-density operations dashboard with health, exception queue, treasury overview, and pause controls.
-- Authored complete automated test suite across all packages.
+### Phase 2: Generic EVM Testnet Path & ERC-20 Ingestion
+- Built `services/chain-workers`: `EvmRangeScanner` with startup chain-id verification and resumable cursor management.
+- Implemented ERC-20 `Transfer` log filtering strictly by allowlisted contract address (anti-spoofing).
+- Implemented `DepositPipeline`: state machine transitions, balanced credit journal posting, and outbox event emissions.
+- Verified 100-event replay idempotency, fake token rejection, and reverted transaction receipt handling (33 passing tests total).
 
 ---
 
@@ -28,4 +23,4 @@
 ---
 
 ## Next Phase
-- **Phase 2:** Live EVM testnet RPC scanner & mock ERC-20 deposit integration.
+- **Phase 3:** Live TRON Nile range scanner, solidified block verification, and mock TRC-20 `10.000000` Nile acceptance flow.

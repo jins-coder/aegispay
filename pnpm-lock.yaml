@@ -87,6 +87,22 @@ importers:
         specifier: ^5.4.5
         version: 5.9.3
 
+  services/chain-workers:
+    dependencies:
+      '@aegispay/address-service':
+        specifier: workspace:*
+        version: link:../address-service
+      '@aegispay/chain-sdk':
+        specifier: workspace:*
+        version: link:../../packages/chain-sdk
+      '@aegispay/core-ledger':
+        specifier: workspace:*
+        version: link:../core-ledger
+    devDependencies:
+      typescript:
+        specifier: ^5.4.5
+        version: 5.9.3
+
   services/core-ledger:
     dependencies:
       '@aegispay/chain-sdk':
